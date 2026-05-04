@@ -1,5 +1,5 @@
 resource "proxmox_download_file" "debian_13" {
-  node_name    = "pve"
+  node_name    = var.node_name
   content_type = "vztmpl"
   datastore_id = "local"
   # HTTP is intentional — Proxmox serves templates over HTTP only; integrity is ensured via GPG-signed checksums.
@@ -7,7 +7,7 @@ resource "proxmox_download_file" "debian_13" {
 }
 
 resource "proxmox_virtual_environment_container" "dns" {
-  node_name    = "pve"
+  node_name    = var.node_name
   vm_id        = 100
   description  = "PowerDNS"
   unprivileged = true
@@ -28,15 +28,15 @@ resource "proxmox_virtual_environment_container" "dns" {
 
     ip_config {
       ipv4 {
-        address = "10.50.0.1/24"
-        gateway = "10.50.0.254"
+        address = "${var.dns_ip}/24"
+        gateway = var.gateway
       }
     }
   }
 
   network_interface {
     name   = "eth0"
-    bridge = "vmbr1"
+    bridge = var.internal_bridge
   }
 
   disk {

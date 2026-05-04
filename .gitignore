@@ -4,6 +4,11 @@
 .stakpak/session*
 
 # ---------------------------------------------------------------------------
+# Rust Token Killer
+# ---------------------------------------------------------------------------
+.rtk*
+
+# ---------------------------------------------------------------------------
 # Secrets & credentials (NEVER commit)
 # ---------------------------------------------------------------------------
 *.pem
@@ -32,8 +37,7 @@ wg*.conf
 *.tfstate.*
 *.tfvars
 *.tfvars.json
-!example.tfvars
-!terraform.tfvars.example
+!terraform.tfvars
 crash.log
 crash.*.log
 override.tf
