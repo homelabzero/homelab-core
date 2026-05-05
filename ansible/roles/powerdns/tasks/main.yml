@@ -43,6 +43,7 @@
     group: pdns
     mode: "0640"
   notify: Restart pdns
+  no_log: true
 
 - name: Remove stray pdns.yml (auth server uses pdns.conf)
   ansible.builtin.file:

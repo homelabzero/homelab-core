@@ -1,0 +1,9 @@
+---
+step_ca_version: "0.30.2"
+step_cli_version: "0.30.2"
+step_pkg_revision: "1"
+step_ca_name: "Homelab CA"
+step_ca_dns: "10.50.0.1"
+step_ca_address: ":9000"
+step_ca_provisioner: "cert-manager"
+step_ca_path: /etc/step-ca

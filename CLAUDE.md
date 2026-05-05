@@ -26,16 +26,25 @@ brew install talosctl kubectl helm cilium-cli opentofu
 
 ```
 opentofu/
-  infrastructure/   # OpenTofu root modules (environment-specific)
-  modules/          # Reusable OpenTofu modules
-docs/               # Documentation
+  infrastructure/   # OpenTofu root module (environment-specific)
+  modules/          # Reusable OpenTofu modules (proxmox, talos)
+ansible/
+  playbooks/        # powerdns.yml, step-ca.yml
+  roles/            # powerdns, step-ca
+  inventories/      # homelab.ini
+kubernetes/         # ArgoCD app-of-apps manifests
+docs/               # Documentation (numbered 00–08)
 ```
 
-## Infrastructure-as-Code (OpenTofu)
+## Deployment Layers
 
-OpenTofu is the IaC tool (open-source Terraform fork). State files, tfvars, and `.terraform/` directories are gitignored — never commit these. The `opentofu/` directory is the canonical location for all IaC code.
+Each layer assumes the previous one is up. Re-running any layer is safe.
 
-A single `tofu apply` provisions the SDN, downloads a custom Talos ISO from [factory.talos.dev](https://factory.talos.dev) with the QEMU guest agent extension, creates the DNS LXC and Talos VMs, reads each VM's DHCP IP via the agent (sticky per MAC via Proxmox IPAM), pushes Talos configs, and bootstraps the cluster. See `docs/06-talos-cluster.md`. Cilium is installed separately via Helm afterwards.
+1. **OpenTofu** (`opentofu/infrastructure/`) — Proxmox SDN, DNS LXC, Talos VMs (custom ISO from [factory.talos.dev](https://factory.talos.dev) with QEMU agent extension); reads DHCP IPs via the agent, pushes Talos machine configs, bootstraps etcd, writes kubeconfig. See `docs/05-opentofu-proxmox.md` and `docs/07-talos-cluster.md`.
+2. **Ansible** (`ansible/`) — runs against the DNS LXC via WireGuard + ProxyJump. Provisions PowerDNS and step-ca (`docs/06-dns-and-ca.md`). Both are foundational infrastructure that must survive cluster rebuilds, hence on the LXC rather than in-cluster.
+3. **Cluster bootstrap** — Cilium via Helm (kube-proxy is disabled in Talos config), then ArgoCD via Helm with `kubernetes/app-of-apps.yaml` taking over the rest.
+
+State files, tfvars, `.terraform/` are gitignored — never commit these. Secrets (PowerDNS API key, step-ca passwords) are passed via env vars (`PDNS_API_KEY`, `STEP_CA_PASSWORD`, `STEP_CA_PROVISIONER_PASSWORD`) — no vaults, no committed secrets.
 
 ## Security Notes
 

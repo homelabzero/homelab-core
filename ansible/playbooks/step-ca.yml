@@ -1,0 +1,8 @@
+---
+- name: Configure step-ca
+  hosts: dns
+  vars:
+    step_ca_password: "{{ lookup('env', 'STEP_CA_PASSWORD') | mandatory }}"
+    step_ca_provisioner_password: "{{ lookup('env', 'STEP_CA_PROVISIONER_PASSWORD') | mandatory }}"
+  roles:
+    - step-ca

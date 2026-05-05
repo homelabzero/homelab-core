@@ -15,7 +15,7 @@ Internal LAN — `10.50.0.0/24` (Proxmox SDN: zone `homelab`, vnet `internal`)
 
 | IP          | Host                    |
 | ----------- | ----------------------- |
-| 10.50.0.1   | PowerDNS (LXC 100)      |
+| 10.50.0.1   | PowerDNS + step-ca (LXC 100) |
 | 10.50.0.20+ | Talos nodes (DHCP/IPAM) |
 | 10.50.0.254 | Proxmox (gateway)       |
 
@@ -27,5 +27,5 @@ Internal LAN — `10.50.0.0/24` (Proxmox SDN: zone `homelab`, vnet `internal`)
 3. [WireGuard VPN](docs/03-wireguard.md)
 4. [OpenTofu Backend](docs/04-opentofu-backend.md)
 5. [OpenTofu Proxmox Provider](docs/05-opentofu-proxmox.md)
-6. [PowerDNS](docs/06-powerdns.md)
+6. [DNS and Certificate Authority](docs/06-dns-and-ca.md)
 7. [Talos Cluster](docs/07-talos-cluster.md)

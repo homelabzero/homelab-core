@@ -26,7 +26,7 @@ OpenTofu reads each VM's DHCP IP, pushes the Talos machine config to it (nameser
 
 ## Apply
 
-This step assumes [PowerDNS](06-powerdns.md) is already configured and answering on `10.50.0.1`. The Talos machine config sets `nameservers = ["10.50.0.1"]`, so DNS must work before bootstrap.
+This step assumes [PowerDNS](06-dns-and-ca.md) is already configured and answering on `10.50.0.1`. The Talos machine config sets `nameservers = ["10.50.0.1"]`, so DNS must work before bootstrap.
 
 ```bash
 cd opentofu/infrastructure

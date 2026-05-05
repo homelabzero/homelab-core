@@ -60,7 +60,7 @@ This creates:
 - **DNS LXC** (`10.50.0.1`, container 100, Debian 13) with `~/.ssh/homelab.pub` injected into root
 - **Talos VMs** (110/111/112) booted from a custom Image Factory ISO with the `qemu-guest-agent` extension; they sit in maintenance mode until Talos config is pushed in [step 07](07-talos-cluster.md)
 
-Continue with [PowerDNS](06-powerdns.md) — Talos can't bootstrap without DNS.
+Continue with [DNS and Certificate Authority](06-dns-and-ca.md) — Talos can't bootstrap without DNS.
 
 ## Troubleshooting
 

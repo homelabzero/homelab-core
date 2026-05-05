@@ -1,0 +1,6 @@
+---
+galaxy_info:
+  author: Dmytro Rybak
+  description: Installs and configures step-ca as a private Certificate Authority
+  license: MIT
+  min_ansible_version: "2.14"

@@ -1,0 +1,17 @@
+[Unit]
+Description=step-ca — Private Certificate Authority
+Documentation=https://smallstep.com/docs/step-ca
+After=network.target
+
+[Service]
+Type=simple
+User=step
+Group=step
+Environment=STEPPATH={{ step_ca_path }}
+ExecStart=/usr/bin/step-ca {{ step_ca_path }}/config/ca.json \
+  --password-file {{ step_ca_path }}/password.txt
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

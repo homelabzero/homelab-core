@@ -1,0 +1,103 @@
+---
+- name: Create step group
+  ansible.builtin.group:
+    name: step
+    system: true
+
+- name: Create step user
+  ansible.builtin.user:
+    name: step
+    group: step
+    home: "{{ step_ca_path }}"
+    create_home: false
+    shell: /usr/sbin/nologin
+    system: true
+
+- name: Create STEPPATH directory
+  ansible.builtin.file:
+    path: "{{ step_ca_path }}"
+    state: directory
+    owner: step
+    group: step
+    mode: "0750"
+
+- name: Download step-ca package
+  ansible.builtin.get_url:
+    url: "https://github.com/smallstep/certificates/releases/download/v{{ step_ca_version }}/step-ca_{{ step_ca_version }}-{{ step_pkg_revision }}_amd64.deb"
+    dest: "/tmp/step-ca_{{ step_ca_version }}-{{ step_pkg_revision }}_amd64.deb"
+    mode: "0644"
+
+- name: Download step CLI package
+  ansible.builtin.get_url:
+    url: "https://github.com/smallstep/cli/releases/download/v{{ step_cli_version }}/step-cli_{{ step_cli_version }}-{{ step_pkg_revision }}_amd64.deb"
+    dest: "/tmp/step-cli_{{ step_cli_version }}-{{ step_pkg_revision }}_amd64.deb"
+    mode: "0644"
+
+- name: Install step-ca
+  ansible.builtin.apt:
+    deb: "/tmp/step-ca_{{ step_ca_version }}-{{ step_pkg_revision }}_amd64.deb"
+
+- name: Install step CLI
+  ansible.builtin.apt:
+    deb: "/tmp/step-cli_{{ step_cli_version }}-{{ step_pkg_revision }}_amd64.deb"
+
+- name: Write CA password file
+  ansible.builtin.copy:
+    content: "{{ step_ca_password }}"
+    dest: "{{ step_ca_path }}/password.txt"
+    owner: step
+    group: step
+    mode: "0600"
+  no_log: true
+
+- name: Write provisioner password file
+  ansible.builtin.copy:
+    content: "{{ step_ca_provisioner_password }}"
+    dest: "{{ step_ca_path }}/provisioner-password.txt"
+    owner: step
+    group: step
+    mode: "0600"
+  no_log: true
+
+- name: Initialize step-ca
+  ansible.builtin.command:
+    cmd: >
+      step ca init
+      --name "{{ step_ca_name }}"
+      --dns "{{ step_ca_dns }}"
+      --address "{{ step_ca_address }}"
+      --provisioner "{{ step_ca_provisioner }}"
+      --password-file {{ step_ca_path }}/password.txt
+      --provisioner-password-file {{ step_ca_path }}/provisioner-password.txt
+      --deployment-type standalone
+    creates: "{{ step_ca_path }}/config/ca.json"
+  environment:
+    STEPPATH: "{{ step_ca_path }}"
+  register: step_ca_init
+
+- name: Set ownership on STEPPATH after init
+  ansible.builtin.file:
+    path: "{{ step_ca_path }}"
+    state: directory
+    owner: step
+    group: step
+    recurse: true
+  when: step_ca_init is changed
+
+- name: Install step-ca systemd service
+  ansible.builtin.template:
+    src: step-ca.service.j2
+    dest: /etc/systemd/system/step-ca.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart step-ca
+
+- name: Enable and start step-ca
+  ansible.builtin.systemd:
+    name: step-ca
+    enabled: true
+    state: started
+    daemon_reload: true
