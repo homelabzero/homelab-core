@@ -1,0 +1,7 @@
+---
+- name: Configure PowerDNS
+  hosts: dns
+  vars:
+    pdns_api_key: "{{ lookup('env', 'PDNS_API_KEY') | mandatory }}"
+  roles:
+    - powerdns

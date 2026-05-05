@@ -28,6 +28,10 @@ resource "proxmox_virtual_environment_container" "dns" {
   initialization {
     hostname = "dns"
 
+    user_account {
+      keys = [trimspace(file(pathexpand(var.ssh_public_key_file)))]
+    }
+
     ip_config {
       ipv4 {
         address = "${var.dns_ip}/24"

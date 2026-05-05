@@ -1,0 +1,8 @@
+---
+pdns_zone: homelab.
+pdns_api_allow_from:
+  - 10.50.0.0/24
+  - 127.0.0.1/8
+pdns_upstream_resolvers:
+  - 1.1.1.1
+  - 8.8.8.8

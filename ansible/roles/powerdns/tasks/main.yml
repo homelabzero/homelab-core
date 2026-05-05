@@ -1,0 +1,90 @@
+---
+- name: Install PowerDNS packages
+  ansible.builtin.apt:
+    name:
+      - pdns-server
+      - pdns-backend-sqlite3
+      - pdns-recursor
+      - sqlite3
+    state: present
+    update_cache: true
+
+- name: Create PowerDNS data directory
+  ansible.builtin.file:
+    path: /var/lib/powerdns
+    state: directory
+    owner: pdns
+    group: pdns
+    mode: "0750"
+
+- name: Initialize SQLite database
+  ansible.builtin.shell:
+    cmd: |
+      set -e
+      if [ -f /usr/share/doc/pdns-backend-sqlite3/schema.sqlite3.sql ]; then
+        sqlite3 /var/lib/powerdns/pdns.sqlite3 < /usr/share/doc/pdns-backend-sqlite3/schema.sqlite3.sql
+      else
+        zcat /usr/share/doc/pdns-backend-sqlite3/schema.sqlite3.sql.gz | sqlite3 /var/lib/powerdns/pdns.sqlite3
+      fi
+    creates: /var/lib/powerdns/pdns.sqlite3
+
+- name: Set database ownership
+  ansible.builtin.file:
+    path: /var/lib/powerdns/pdns.sqlite3
+    owner: pdns
+    group: pdns
+    mode: "0640"
+
+- name: Configure pdns authoritative
+  ansible.builtin.template:
+    src: pdns.conf.j2
+    dest: /etc/powerdns/pdns.conf
+    owner: root
+    group: pdns
+    mode: "0640"
+  notify: Restart pdns
+
+- name: Remove stray pdns.yml (auth server uses pdns.conf)
+  ansible.builtin.file:
+    path: /etc/powerdns/pdns.yml
+    state: absent
+  notify: Restart pdns
+
+- name: Remove legacy recursor.conf (pdns-recursor 5.x uses YAML)
+  ansible.builtin.file:
+    path: /etc/powerdns/recursor.conf
+    state: absent
+  notify: Restart pdns-recursor
+
+- name: Configure pdns recursor
+  ansible.builtin.template:
+    src: recursor.yml.j2
+    dest: /etc/powerdns/recursor.yml
+    owner: root
+    group: pdns
+    mode: "0640"
+  notify: Restart pdns-recursor
+
+- name: Enable and start pdns authoritative
+  ansible.builtin.systemd:
+    name: pdns
+    enabled: true
+    state: started
+
+- name: Enable and start pdns recursor
+  ansible.builtin.systemd:
+    name: pdns-recursor
+    enabled: true
+    state: started
+
+- name: Check if zone exists
+  ansible.builtin.command:
+    cmd: pdnsutil list-zone {{ pdns_zone }}
+  register: zone_check
+  failed_when: false
+  changed_when: false
+
+- name: Create zone
+  ansible.builtin.command:
+    cmd: pdnsutil create-zone {{ pdns_zone }}
+  when: zone_check.rc != 0

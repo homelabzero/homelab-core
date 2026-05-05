@@ -12,7 +12,8 @@ resource "talos_machine_configuration_apply" "controlplane" {
           nameservers = var.nameservers
         }
         install = {
-          disk = var.install_disk
+          disk  = var.install_disk
+          image = "factory.talos.dev/installer/${var.schematic_id}:v${var.talos_version}"
         }
       }
     }),
@@ -45,7 +46,8 @@ resource "talos_machine_configuration_apply" "worker" {
           nameservers = var.nameservers
         }
         install = {
-          disk = var.install_disk
+          disk  = var.install_disk
+          image = "factory.talos.dev/installer/${var.schematic_id}:v${var.talos_version}"
         }
       }
     })

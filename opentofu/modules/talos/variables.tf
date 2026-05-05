@@ -23,6 +23,16 @@ variable "install_disk" {
   default = "/dev/sda"
 }
 
+variable "schematic_id" {
+  type        = string
+  description = "Talos factory schematic ID (for installer image)"
+}
+
+variable "talos_version" {
+  type        = string
+  description = "Talos version (e.g. 1.13.0) — must match the boot ISO"
+}
+
 variable "nameservers" {
   type = list(string)
 }

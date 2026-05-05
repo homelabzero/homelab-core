@@ -45,3 +45,8 @@ variable "dhcp_range_end" {
   type        = string
   description = "End of DHCP range"
 }
+
+variable "ssh_public_key_file" {
+  type        = string
+  description = "Path to SSH public key file to inject into the DNS LXC root account"
+}

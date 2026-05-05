@@ -50,3 +50,7 @@ variable "worker_nodes" {
 variable "nameservers" {
   type = list(string)
 }
+
+variable "ssh_public_key_file" {
+  type = string
+}

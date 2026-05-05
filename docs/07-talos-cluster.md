@@ -1,4 +1,4 @@
-# 06 - Talos Cluster
+# 07 - Talos Cluster
 
 Kubernetes is provisioned via [Talos Linux](https://www.talos.dev/) with Cilium as the CNI and kube-proxy disabled.
 
@@ -16,56 +16,24 @@ Node IPs are assigned by Proxmox IPAM (dnsmasq) and are sticky per MAC address. 
 
 ## How bootstrapping works
 
-Talos VMs boot in maintenance mode and get IPs via DHCP. Two pieces make the bootstrap automatic:
+Talos VMs boot in maintenance mode and get IPs via DHCP. Three pieces make the bootstrap automatic:
 
 1. **Custom Talos ISO from [factory.talos.dev](https://factory.talos.dev)** — generated at apply time via the Image Factory schematic API with the `qemu-guest-agent` system extension baked in.
-2. **QEMU guest agent** — reports the DHCP-assigned IP back to Proxmox, exposed in OpenTofu as `vm.ipv4_addresses`.
+2. **Factory installer image** — the same schematic ID is wired into `machine.install.image` so when Talos installs itself to disk it uses the factory installer (not the upstream `siderolabs/installer`). Without this, the QEMU agent disappears after the post-install reboot.
+3. **QEMU guest agent** — reports the DHCP-assigned IP back to Proxmox, exposed in OpenTofu as `vm.ipv4_addresses`.
 
-OpenTofu reads each VM's DHCP IP, pushes the Talos machine config to it (nameservers, CNI config, install disk), then bootstraps etcd and retrieves the kubeconfig — all against the same DHCP IP. No static IP management needed.
-
-## Hetzner Firewall
-
-The Hetzner Robot firewall is stateless. Outbound packets are allowed, but responses are blocked unless explicitly permitted. Add these rules **before** the final discard rule:
-
-| # | Protocol | Source port | Dest port | Action |
-|---|---|---|---|---|
-| 1 | ICMP | any | any | accept |
-| 2 | TCP | any | any | accept (TCP flag: ACK) |
-| 3 | UDP | 53 | any | accept |
-| 4 | UDP | 123 | any | accept |
-| 5 | UDP | any | 51820 | accept (WireGuard) |
-
-## Prerequisites
-
-The Proxmox SDN DHCP plugin uses `dnsmasq`. Install it on the host:
-
-```bash
-ssh homelab
-apt-get install -y dnsmasq
-systemctl disable --now dnsmasq  # SDN runs per-zone instances (dnsmasq@<zone>)
-```
-
-The WireGuard client must be able to route to `10.50.0.0/24` through the Proxmox host:
-- `AllowedIPs` on the client includes `10.50.0.0/24`
-- No conflicting bridge IP on the Proxmox host (`ip route get 10.50.0.x` should show `dev internal`)
+OpenTofu reads each VM's DHCP IP, pushes the Talos machine config to it (nameservers, CNI config, install disk + image), then bootstraps etcd and retrieves the kubeconfig — all against the same DHCP IP. No static IP management needed.
 
 ## Apply
+
+This step assumes [PowerDNS](06-powerdns.md) is already configured and answering on `10.50.0.1`. The Talos machine config sets `nameservers = ["10.50.0.1"]`, so DNS must work before bootstrap.
 
 ```bash
 cd opentofu/infrastructure
 tofu apply
 ```
 
-A single apply does all of:
-
-1. Creates the SDN zone, vnet, and subnet (DHCP range `10.50.0.20–50`, NAT)
-2. POSTs to `factory.talos.dev/schematics` to get a custom ISO with the QEMU agent extension
-3. Downloads the ISO to the Proxmox host
-4. Creates the DNS LXC and the three Talos VMs
-5. Waits for the QEMU agent to report each VM's DHCP IP (up to 15 min per VM)
-6. Pushes the Talos machine config to each node (nameservers, CNI, install disk)
-7. Bootstraps etcd on the control plane
-8. Retrieves the kubeconfig
+OpenTofu reads each VM's DHCP IP from the QEMU agent, pushes the Talos machine config (resolvers, CNI=none, install disk + factory installer image), bootstraps etcd, and writes out the kubeconfig.
 
 ## Access the Cluster
 

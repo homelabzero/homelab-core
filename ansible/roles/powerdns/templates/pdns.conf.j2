@@ -1,0 +1,16 @@
+# Managed by Ansible — do not edit manually
+
+launch=gsqlite3
+gsqlite3-database=/var/lib/powerdns/pdns.sqlite3
+
+local-address=127.0.0.1
+local-port=5300
+
+api=yes
+api-key={{ pdns_api_key }}
+webserver=yes
+webserver-address=0.0.0.0
+webserver-port=8081
+webserver-allow-from={{ pdns_api_allow_from | join(',') }}
+
+default-soa-content=ns1.homelab. hostmaster.homelab. 0 10800 3600 604800 3600

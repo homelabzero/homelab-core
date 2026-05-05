@@ -1,0 +1,21 @@
+# Managed by Ansible — do not edit manually
+
+incoming:
+  listen:
+    - 0.0.0.0:53
+  allow_from:
+    - 10.50.0.0/24
+    - 127.0.0.1/8
+
+recursor:
+  forward_zones:
+    - zone: {{ pdns_zone }}
+      forwarders:
+        - 127.0.0.1:5300
+      recurse: false
+  forward_zones_recurse:
+    - zone: .
+      forwarders: {{ pdns_upstream_resolvers | to_json }}
+
+recordcache:
+  max_ttl: 3600

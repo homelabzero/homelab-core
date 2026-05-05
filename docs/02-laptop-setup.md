@@ -3,7 +3,7 @@
 ## Install Tools
 
 ```bash
-brew install talosctl kubectl helm cilium-cli opentofu
+brew install talosctl kubectl helm cilium-cli opentofu ansible
 ```
 
 ## WireGuard
