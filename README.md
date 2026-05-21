@@ -1,31 +1,30 @@
 # Homelab
 
-Personal homelab infrastructure built on Proxmox (Hetzner Cloud), accessed via WireGuard VPN, with Kubernetes via Talos Linux + Cilium.
+Personal homelab Kubernetes cluster — Talos Linux on Hetzner Cloud, accessed via WireGuard VPN, with Cilium CNI.
 
 ## Network
 
 WireGuard VPN — `10.25.0.0/24`
 
-| IP          | Host     |
-| ----------- | -------- |
-| 10.25.0.1   | Proxmox  |
-| 10.25.0.2   | MacBook  |
+| IP           | Host        |
+| ------------ | ----------- |
+| 10.25.0.3    | talos-cp-1  |
+| 10.25.0.4    | talos-cp-2  |
+| 10.25.0.5    | talos-cp-3  |
+| 10.25.0.6    | talos-w-1   |
+| 10.25.0.100  | MacBook     |
 
-Internal LAN — `10.50.0.0/24` (Proxmox SDN: zone `homelab`, vnet `internal`)
+Hetzner private network — `10.20.0.0/16`
 
-| IP          | Host                    |
-| ----------- | ----------------------- |
-| 10.50.0.1   | PowerDNS + step-ca (LXC 100) |
-| 10.50.0.20+ | Talos nodes (DHCP/IPAM) |
-| 10.50.0.254 | Proxmox (gateway)       |
+| Subnet          | Purpose                              |
+| --------------- | ------------------------------------ |
+| 10.20.0.0/24    | Cloud control planes                 |
+| 10.20.1.0/24    | vSwitch — bare-metal worker          |
 
 ## Docs
 
-0. [Hardware](docs/00-hardware.md)
-1. [Proxmox Setup](docs/01-proxmox-setup.md)
-2. [Laptop Setup](docs/02-laptop-setup.md)
+0. [Infrastructure](docs/00-infrastructure.md)
+1. [Laptop Setup](docs/01-laptop-setup.md)
+2. [OpenTofu Backend](docs/02-opentofu-backend.md)
 3. [WireGuard VPN](docs/03-wireguard.md)
-4. [OpenTofu Backend](docs/04-opentofu-backend.md)
-5. [OpenTofu Proxmox Provider](docs/05-opentofu-proxmox.md)
-6. [DNS and Certificate Authority](docs/06-dns-and-ca.md)
-7. [Talos Cluster](docs/07-talos-cluster.md)
+4. [Talos Cluster](docs/04-talos-cluster.md)
