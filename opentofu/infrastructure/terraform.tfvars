@@ -1,6 +1,6 @@
 cluster_name       = "homelab"
 talos_version      = "1.13.0"
-kubernetes_version = "1.35.5" # capped at 1.35.x because the Hetzner ISO runs Talos 1.12.4
+kubernetes_version = "1.35.5"                   # capped at 1.35.x because the Hetzner ISO runs Talos 1.12.4
 talos_hetzner_iso  = "hcloud-v1-12-4.amd64.iso" # Hetzner public Talos image (qemu-guest-agent included)
 
 # Cloudflare DNS
@@ -23,11 +23,12 @@ controlplane_nodes = {
 # - vlan_id   : VLAN ID assigned in Robot when creating the vSwitch
 worker_nodes = {
   talos-w-1 = {
-    public_ip      = "148.251.156.11"
-    private_ip     = "10.20.1.10"
-    wireguard_addr = "10.25.0.6/24"
-    vlan_id        = 4000
-    install_disk   = "/dev/nvme0n1"
+    public_ip         = "148.251.156.11"
+    private_ip        = "10.20.1.10"
+    wireguard_addr    = "10.25.0.6/24"
+    vlan_id           = 4000
+    install_disk      = "/dev/nvme0n1"
+    network_interface = "enp41s0"
   }
 }
 

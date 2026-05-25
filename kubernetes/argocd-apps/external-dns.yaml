@@ -1,0 +1,54 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://kubernetes-sigs.github.io/external-dns
+    targetRevision: 1.21.1
+    chart: external-dns
+    helm:
+      releaseName: external-dns
+      valuesObject:
+        provider:
+          name: cloudflare
+        domainFilters:
+          - internal.homelab0.xyz
+        sources:
+          - service
+          - gateway-httproute
+        policy: sync
+        txtOwnerId: homelab
+        txtPrefix: "edns-"
+        triggerLoopOnEvent: true
+        logFormat: json
+        extraArgs:
+          - --cloudflare-proxied=false
+        env:
+          - name: CF_API_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: cloudflare-api-token
+                key: api-token
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            memory: 64Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-dns
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true
+  revisionHistoryLimit: 3

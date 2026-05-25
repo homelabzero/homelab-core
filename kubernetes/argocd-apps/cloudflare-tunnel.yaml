@@ -1,0 +1,43 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudflare-tunnel
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://cloudflare.github.io/helm-charts
+    chart: cloudflare-tunnel
+    targetRevision: 0.3.2
+    helm:
+      releaseName: cloudflare-tunnel
+      valuesObject:
+        cloudflare:
+          tunnelName: homelab
+          secretName: cloudflare-tunnel-credentials
+          ingress:
+            - hostname: "homelab0.xyz"
+              service: http://gateway-public.gateway.svc.cluster.local
+            - hostname: "*.homelab0.xyz"
+              service: http://gateway-public.gateway.svc.cluster.local
+            - service: http_status:404
+        resources:
+          requests:
+            cpu: 10m
+            memory: 64Mi
+          limits:
+            memory: 128Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cloudflare-tunnel
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true
+  revisionHistoryLimit: 3

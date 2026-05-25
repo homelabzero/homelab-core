@@ -35,11 +35,12 @@ variable "controlplane_nodes" {
 
 variable "worker_nodes" {
   type = map(object({
-    public_ip      = string # existing dedicated server IP
-    private_ip     = string # in vswitch_subnet_cidr
-    wireguard_addr = string
-    vlan_id        = number           # vSwitch VLAN ID (assigned in Robot)
-    install_disk   = optional(string) # override; falls back to var.install_disk
+    public_ip         = string # existing dedicated server IP
+    private_ip        = string # in vswitch_subnet_cidr
+    wireguard_addr    = string
+    vlan_id           = number           # vSwitch VLAN ID (assigned in Robot)
+    install_disk      = optional(string) # override; falls back to var.install_disk
+    network_interface = optional(string, "eth0") # physical NIC name (e.g. enp41s0)
   }))
   default = {}
 }
@@ -54,6 +55,12 @@ variable "vswitch_id" {
 variable "network_cidr" {
   type    = string
   default = "10.20.0.0/16"
+}
+
+variable "lb_cidr" {
+  type    = string
+  default = "10.50.0.0/24"
+  description = "Cilium LB IP pool CIDR — routed through the WireGuard tunnel to the laptop"
 }
 
 variable "cloud_subnet_cidr" {

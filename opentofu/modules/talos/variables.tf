@@ -84,11 +84,12 @@ variable "controlplane_public_ips" {
 
 variable "worker_nodes" {
   type = map(object({
-    public_ip      = string
-    private_ip     = string           # static IP in vswitch subnet
-    wireguard_addr = string           # CIDR
-    vlan_id        = number           # vSwitch VLAN ID
-    install_disk   = optional(string) # falls back to var.install_disk
+    public_ip        = string
+    private_ip       = string           # static IP in vswitch subnet
+    wireguard_addr   = string           # CIDR
+    vlan_id          = number           # vSwitch VLAN ID
+    install_disk     = optional(string) # falls back to var.install_disk
+    network_interface = optional(string, "eth0") # physical NIC name (e.g. enp41s0)
   }))
   default     = {}
   description = "Map of worker node name to public IP (existing dedicated server), private IP in vswitch subnet, WireGuard CIDR, and vSwitch VLAN ID"
@@ -104,6 +105,12 @@ variable "service_cidr" {
   type        = string
   default     = "10.96.0.0/12"
   description = "Service CIDR — included in laptop wg AllowedIPs so cluster Service IPs route through the tunnel"
+}
+
+variable "lb_cidr" {
+  type        = string
+  default     = "10.50.0.0/24"
+  description = "Cilium LB IP pool CIDR — included in laptop wg AllowedIPs so LoadBalancer IPs route through the tunnel"
 }
 
 variable "wireguard_clients" {

@@ -1,0 +1,60 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vault
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://helm.releases.hashicorp.com
+    targetRevision: 0.32.0
+    chart: vault
+    helm:
+      releaseName: vault
+      valuesObject:
+        injector:
+          enabled: false
+        ui:
+          enabled: true
+        server:
+          dataStorage:
+            storageClass: openebs-single-replica
+          auditStorage:
+            enabled: true
+            storageClass: openebs-single-replica
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          standalone:
+            config: |
+              ui = true
+
+              storage "raft" {
+                path    = "/vault/data"
+                node_id = "vault-0"
+              }
+
+              listener "tcp" {
+                address         = "[::]:8200"
+                cluster_address = "[::]:8201"
+                tls_disable     = "true"
+              }
+
+              service_registration "kubernetes" {}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vault
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true
+  revisionHistoryLimit: 3

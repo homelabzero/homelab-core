@@ -47,6 +47,7 @@ module "talos" {
   cloud_subnet_cidr   = var.cloud_subnet_cidr
   vswitch_subnet_cidr = var.vswitch_subnet_cidr
   network_cidr        = var.network_cidr
+  lb_cidr             = var.lb_cidr
   wireguard_clients   = var.laptop_wireguard
 
   wireguard_node_private_keys = var.wireguard_node_private_keys

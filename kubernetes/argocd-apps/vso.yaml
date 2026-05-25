@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vault-secrets-operator
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://helm.releases.hashicorp.com
+    chart: vault-secrets-operator
+    targetRevision: 1.4.0
+    helm:
+      releaseName: vault-secrets-operator
+      valuesObject:
+        defaultVaultConnection:
+          enabled: true
+          address: http://vault.vault.svc.cluster.local:8200
+        defaultAuthMethod:
+          enabled: true
+          method: kubernetes
+          mount: kubernetes
+          kubernetes:
+            role: vault-secrets-operator
+            serviceAccount: vault-secrets-operator-controller-manager
+            tokenAudiences:
+              - vault
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vault
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true
+  revisionHistoryLimit: 3

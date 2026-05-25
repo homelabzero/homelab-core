@@ -3,21 +3,40 @@ kind: Application
 metadata:
   name: argocd
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
     repoURL: https://argoproj.github.io/argo-helm
-    targetRevision: 9.5.11
+    targetRevision: 9.5.15
     chart: argo-cd
     helm:
       releaseName: argocd
       valuesObject:
-        dex:
-          enabled: false
+        global:
+          domain: argocd.internal.homelab0.xyz
         notifications:
           enabled: false
+        server:
+          insecure: true
+        configs:
+          cm:
+            url: https://argocd.internal.homelab0.xyz
+            dex.config: |
+              connectors:
+                - type: github
+                  id: github
+                  name: GitHub
+                  config:
+                    clientID: $dex.github.clientID
+                    clientSecret: $dex.github.clientSecret
+          rbac:
+            policy.default: ""
+            policy.csv: |
+              g, dmytro-rybak, role:admin
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
@@ -27,3 +46,4 @@ spec:
     automated:
       prune: true
       selfHeal: true
+  revisionHistoryLimit: 3

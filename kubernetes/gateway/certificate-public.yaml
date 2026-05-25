@@ -1,0 +1,13 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-public
+  namespace: gateway
+spec:
+  secretName: wildcard-public
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer
+  dnsNames:
+    - "homelab0.xyz"
+    - "*.homelab0.xyz"

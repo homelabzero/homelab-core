@@ -44,18 +44,24 @@ locals {
         interface = "eth1"
         dhcp      = true
         mtu       = var.private_mtu
+        routes = [{
+          network = var.vswitch_subnet_cidr
+          gateway = cidrhost(var.cloud_subnet_cidr, 1)
+        }]
       },
       local.wg0_interface[name],
     ]
   } }
 
-  # Network patch for workers: eth0 = public DHCP, eth0.<vlan> = static IP +
+  # Network patch for workers: <nic> = public DHCP, <nic>.<vlan> = static IP +
   # route to the cloud subnet via the vSwitch gateway, MTU 1400. Plus wg0.
+  # network_interface must match the actual NIC name on the bare-metal host
+  # (e.g. enp41s0 on Hetzner dedicated servers, eth0 on cloud/VMs).
   worker_network = { for name, n in var.worker_nodes : name => {
     nameservers = var.nameservers
     interfaces = [
       {
-        interface = "eth0"
+        interface = n.network_interface
         dhcp      = true
         vlans = [{
           vlanId    = n.vlan_id
@@ -107,6 +113,16 @@ locals {
       extraArgs = {
         "anonymous-auth" = "false"
       }
+      admissionControl = [{
+        name = "PodSecurity"
+        configuration = {
+          apiVersion = "pod-security.admission.config.k8s.io/v1beta1"
+          kind       = "PodSecurityConfiguration"
+          exemptions = {
+            namespaces = ["openebs"]
+          }
+        }
+      }]
     }
     etcd = {
       advertisedSubnets = [var.cloud_subnet_cidr]
@@ -120,9 +136,26 @@ locals {
     })
   }
 
+  openebs_worker_machine = {
+    sysctls = {
+      "vm.nr_hugepages" = "1024"
+    }
+    nodeLabels = {
+      "openebs.io/engine" = "mayastor"
+    }
+    kubelet = {
+      extraMounts = [{
+        destination = "/var/local"
+        type        = "bind"
+        source      = "/var/local"
+        options     = ["bind", "rshared", "rw"]
+      }]
+    }
+  }
+
   worker_patches = { for name in keys(var.worker_nodes) : name =>
     yamlencode({
-      machine = merge(local.base_machine[name], { network = local.worker_network[name] })
+      machine = merge(local.base_machine[name], { network = local.worker_network[name] }, local.openebs_worker_machine)
     })
   }
 
@@ -150,10 +183,12 @@ locals {
       allowed_ips = concat(
         ["${local.wireguard_addr_only[name]}/32"],
         ["${local.all_public_ips[name]}/32"],
+        ["${local.static_nodes[name].private_ip}/32"],
         name == local.bootstrap_node_name ? [
           var.network_cidr,
           var.pod_cidr,
           var.service_cidr,
+          var.lb_cidr,
         ] : []
       )
     }

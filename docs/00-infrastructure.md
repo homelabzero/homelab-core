@@ -25,9 +25,7 @@ Region: FSN1 — $52 / month
 
 Region: FSN1 — $7.99 / TB / month (per account)
 
-| Bucket          | Purpose        |
-| --------------- | -------------- |
-| homelab-tfstate | OpenTofu state |
+- OpenTofu state bucket
 
 ## Domain
 

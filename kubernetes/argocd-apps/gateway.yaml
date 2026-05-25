@@ -1,8 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: root
+  name: gateway
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
@@ -10,10 +12,12 @@ spec:
   source:
     repoURL: https://github.com/dmytro-rybak/homelab
     targetRevision: HEAD
-    path: kubernetes/argocd-apps
+    path: kubernetes/gateway
+    directory:
+      recurse: true
   destination:
     server: https://kubernetes.default.svc
-    namespace: argocd
+    namespace: gateway
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
