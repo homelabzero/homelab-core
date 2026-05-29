@@ -1,38 +1,79 @@
 # 03 - Dedicated Server
 
-One-time setup for the Hetzner dedicated server (`talos-w-1`). Done once — Talos persists across reboots after installation.
+One-time bare-metal prep for the Hetzner Robot server. Done once per node —
+Talos persists across reboots after install.
 
-## vSwitch
+## Build the Talos Image
 
-1. In [Hetzner Robot](https://robot.hetzner.com) → vSwitch → Create.
-2. Attach the dedicated server to it.
-3. Note the numeric ID and set it in `opentofu/infrastructure/terraform.tfvars`:
-   ```hcl
-   vswitch_id = 81327
-   ```
+Talos boots from a Hetzner-rescue `dd`. The image is a metal image built by
+the Talos Image Factory with the `siderolabs/netbird` system extension baked
+in — that's what gives the node NetBird connectivity from the moment it
+boots.
+
+Compute the schematic ID and image URL:
+
+```bash
+ID=$(curl -sS -X POST -H "Content-Type: application/yaml" \
+  --data-binary @- https://factory.talos.dev/schematics <<'EOF' | jq -r .id
+customization:
+  systemExtensions:
+    officialExtensions:
+      - siderolabs/netbird
+EOF
+)
+
+VER=$(awk -F'"' '/^talos_version/ {print $2}' \
+  opentofu/infrastructure/terraform.tfvars)
+
+echo "https://factory.talos.dev/image/$ID/v$VER/metal-amd64.raw.xz"
+```
+
+The Talos OpenTofu module recomputes the same ID at plan time for the
+installer image, so the running OS and the on-disk installer always match.
 
 ## Install Talos (Rescue System)
 
-1. Boot the server into the [Hetzner rescue system](https://robot.hetzner.com) (Robot → Server → Reset → Activate rescue system).
-2. SSH in and write the Talos metal image to disk:
+1. In [Hetzner Robot](https://robot.hetzner.com) → Server → Reset → activate
+   rescue system.
+2. SSH in and dd the metal image to disk:
 
-```bash
-wget -O /tmp/talos.raw.xz https://github.com/siderolabs/talos/releases/download/v1.13.0/metal-amd64.raw.xz
-xz -d -c /tmp/talos.raw.xz | dd of=/dev/nvme0n1 bs=4M status=progress && sync
-reboot
-```
+   ```bash
+   wget -O /tmp/talos.raw.xz "<image_url_from_above>"
+   xz -d -c /tmp/talos.raw.xz | dd of=/dev/nvme0n1 bs=4M status=progress && sync
+   reboot
+   ```
 
-3. The server reboots into Talos maintenance mode. It will accept machine config on port 50000 of its public IP.
+3. The server reboots into Talos maintenance mode on its public IP. The Talos
+   API is reachable on port 50000.
 
 ## Robot Firewall
 
-The Hetzner Robot firewall is **stateless** — outbound is allowed but inbound responses are blocked unless explicitly permitted. Configure these rules before the final discard rule:
+The cluster API (6443) and Talos API (50000) are publicly listening. Apply
+Robot firewall rules at your discretion — NetBird is *not* a firewall for the
+node itself, only the access path for the laptop.
 
-| # | Protocol | Source port | Dest port      | Action                  |
-| - | -------- | ----------- | -------------- | ----------------------- |
-| 1 | ICMP     | any         | any            | accept                  |
-| 2 | TCP      | any         | any            | accept (TCP flag: ACK)  |
-| 3 | UDP      | any         | 51820          | accept (WireGuard)      |
-| 4 | TCP      | any         | 50000          | accept (Talos API)      |
+Recommended minimum:
 
-Rule 6 can be removed once `bootstrap_complete = true` is applied in OpenTofu — after that, Talos API is only reachable over WireGuard.
+| # | Protocol | Source IP    | Dest port | Action                  |
+| - | -------- | ------------ | --------- | ----------------------- |
+| 1 | ICMP     | any          | any       | accept                  |
+| 2 | TCP      | any          | any       | accept (TCP flag: ACK)  |
+| 3 | UDP      | any          | 51820     | accept (NetBird WG)     |
+
+Locking down 50000/6443 to only NetBird overlay IPs is possible but loses
+the "rescue from anywhere" property if NetBird ever breaks. Trade-off is
+yours.
+
+## Per-Node Values for tfvars
+
+After install, record in `opentofu/infrastructure/terraform.tfvars`:
+
+```hcl
+nodes = {
+  talos-1 = {
+    public_ip         = "<server public IP>"
+    install_disk      = "/dev/nvme0n1"
+    network_interface = "enp41s0"  # check with `ip link` from rescue
+  }
+}
+```

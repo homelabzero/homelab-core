@@ -1,18 +1,9 @@
 # 00 - Infrastructure
 
-## Cloud Control Planes (Hetzner Cloud)
+## Dedicated Server (Hetzner Robot)
 
-3x CPX22 — $9.49 / month each ($28.47 total)
-
-| Node       | Region | CPU          | RAM  | Storage    |
-| ---------- | ------ | ------------ | ---- | ---------- |
-| talos-cp-1 | nbg1   | 2 vCPU (AMD) | 4 GB | 80 GB NVMe |
-| talos-cp-2 | fsn1   | 2 vCPU (AMD) | 4 GB | 80 GB NVMe |
-| talos-cp-3 | hel1   | 2 vCPU (AMD) | 4 GB | 80 GB NVMe |
-
-## Dedicated Server (Hetzner) — Worker
-
-Region: FSN1 — $52 / month
+One AX41-NVMe in FSN1 — combined control plane + worker. The cluster scales to
+3 nodes by adding entries to `nodes` in `terraform.tfvars`.
 
 | Component | Spec                       |
 | --------- | -------------------------- |
@@ -25,10 +16,17 @@ Region: FSN1 — $52 / month
 
 Region: FSN1 — $7.99 / TB / month (per account)
 
-- OpenTofu state bucket
+- OpenTofu state bucket (S3-compatible)
+
+## NetBird Cloud
+
+Free tier — laptop ↔ node WireGuard mesh + private DNS (`*.netbird.cloud`).
+Used as the only laptop access path to the cluster. No host-level WireGuard.
 
 ## Domain
 
-| Domain       | Registrar  | Price            |
-| ------------ | ---------- | ---------------- |
+| Domain       | Registrar  | Price                   |
+| ------------ | ---------- | ----------------------- |
 | homelab0.xyz | Cloudflare | $1.18 / year (discount) |
+
+Used by cert-manager (DNS-01) and external-dns. Not used for the kube-apiserver endpoint — that goes through NetBird.

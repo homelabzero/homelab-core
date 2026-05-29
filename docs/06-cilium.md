@@ -20,8 +20,13 @@ helm install cilium cilium/cilium \
   --set k8sServicePort=7445 \
   --set gatewayAPI.enabled=true \
   --set gatewayAPI.enableAlpn=true \
-  --set gatewayAPI.enableAppProtocol=true
+  --set gatewayAPI.enableAppProtocol=true \
+  --set operator.replicas=1
 ```
+
+> `operator.replicas=1` because the operator has node anti-affinity; on a
+> single node the second replica stays `Pending`. Drop the flag (defaults
+> to 2) when scaling to 3 nodes.
 
 ## Verify
 

@@ -1,0 +1,64 @@
+machine:
+  install:
+    disk: ${install_disk}
+    image: ${installer_image}
+  time:
+    servers:
+      - ntp1.hetzner.de
+      - ntp2.hetzner.com
+      - ntp3.hetzner.net
+  # kubelet reaches the apiserver via KubePrism on localhost:7445; KubePrism
+  # load-balances across all known apiservers. No external LB needed.
+  features:
+    kubePrism:
+      enabled: true
+      port: 7445
+  network:
+    nameservers:
+      - 1.1.1.1
+      - 8.8.8.8
+    interfaces:
+      - interface: ${network_interface}
+        dhcp: true
+    # Resolve the cluster endpoint to ourselves so on-host Talos controllers
+    # (StaticEndpointController, EndpointController, etc.) don't depend on
+    # NetBird DNS, which is not wired into the host resolver. Each node hits
+    # its own apiserver locally; the SAN is already covered by Talos.
+    extraHostEntries:
+      - ip: 127.0.0.1
+        aliases:
+          - ${cluster_endpoint}
+  # OpenEBS Mayastor prerequisites — this node hosts workloads as well as CP.
+  sysctls:
+    vm.nr_hugepages: "1024"
+  nodeLabels:
+    openebs.io/engine: mayastor
+  kubelet:
+    extraMounts:
+      - destination: /var/local
+        type: bind
+        source: /var/local
+        options:
+          - bind
+          - rshared
+          - rw
+cluster:
+  # Cilium replaces kube-proxy + the CNI.
+  network:
+    cni:
+      name: none
+  proxy:
+    disabled: true
+  # Workloads land on CPs (single-node today, also fine for 3-node HA).
+  allowSchedulingOnControlPlanes: true
+  apiServer:
+    extraArgs:
+      anonymous-auth: "false"
+    admissionControl:
+      - name: PodSecurity
+        configuration:
+          apiVersion: pod-security.admission.config.k8s.io/v1beta1
+          kind: PodSecurityConfiguration
+          exemptions:
+            namespaces:
+              - openebs
