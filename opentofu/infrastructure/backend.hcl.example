@@ -1,2 +1,0 @@
-bucket   = "<HETZNER_OBJECT_STORAGE_BUCKET>"
-endpoint = "https://<HETZNER_OBJECT_STORAGE_ENDPOINT>"

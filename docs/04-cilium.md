@@ -1,4 +1,4 @@
-# 06 - Cilium
+# 04 - Cilium
 
 Cilium is the CNI and replaces kube-proxy. Nodes stay `NotReady` until it is installed.
 

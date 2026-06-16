@@ -3,7 +3,7 @@
 ## Dedicated Server (Hetzner Robot)
 
 One AX41-NVMe in FSN1 — combined control plane + worker. The cluster scales to
-3 nodes by adding entries to `nodes` in `terraform.tfvars`.
+3 nodes by adding entries to `nodes` in `talos/topf.yaml`.
 
 | Component | Spec                       |
 | --------- | -------------------------- |
@@ -11,12 +11,6 @@ One AX41-NVMe in FSN1 — combined control plane + worker. The cluster scales to
 | RAM       | 2x 32 GB DDR4 ECC (64 GB)  |
 | Storage   | 2x 512 GB SSD M.2 NVMe     |
 | NIC       | Intel I210 (1 Gbit)        |
-
-## Object Storage (Hetzner Cloud)
-
-Region: FSN1 — $7.99 / TB / month (per account)
-
-- OpenTofu state bucket (S3-compatible)
 
 ## NetBird Cloud
 

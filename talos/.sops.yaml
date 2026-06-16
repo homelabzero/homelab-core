@@ -1,0 +1,5 @@
+# age-keygen -o ~/.config/sops/age/keys.txt  -> paste its "age1..." public key
+# into the fields below. Keep the private key out of git, backed up elsewhere.
+creation_rules:
+  - path_regex: \.sops\.yaml$
+    age: age1ux27ulvsjs9zdljp4rn2697kjvma92d37cth0mpe4ssqah09c4nq5e8unj

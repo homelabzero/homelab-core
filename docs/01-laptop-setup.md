@@ -3,22 +3,17 @@
 ## Install Tools
 
 ```bash
-brew install talosctl kubectl helm cilium-cli opentofu
+brew install talosctl kubectl helm cilium-cli postfinance/tap/topf sops age
 ```
 
 ## NetBird Client
 
-The laptop's only path to the cluster is NetBird. Install the GUI from
-[netbird.io](https://netbird.io/download) or use the CLI:
+The laptop's only path to the cluster is NetBird. Install the GUI client from
+[netbird.io/download](https://netbird.io/download) and log in through the
+browser (SSO) — no setup key on the laptop (setup keys are only for headless
+node enrollment).
 
-```bash
-netbird up --setup-key <YOUR_KEY>
-```
-
-Get a setup key at [app.netbird.io](https://app.netbird.io) → Setup Keys. The
-same key is used by the cluster nodes (reusable key).
-
-Verify the laptop peer is connected:
+Verify the peer is connected:
 
 ```bash
 netbird status

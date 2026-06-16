@@ -1,4 +1,4 @@
-# 03 - Dedicated Server
+# 02 - Dedicated Server
 
 One-time bare-metal prep for the Hetzner Robot server. Done once per node —
 Talos persists across reboots after install.
@@ -10,26 +10,18 @@ the Talos Image Factory with the `siderolabs/netbird` system extension baked
 in — that's what gives the node NetBird connectivity from the moment it
 boots.
 
-Compute the schematic ID and image URL:
+The schematic is defined in `talos/schematic.yaml`. Get its ID and build the
+image URL (`talos_version` from `talos/topf.yaml`):
 
 ```bash
-ID=$(curl -sS -X POST -H "Content-Type: application/yaml" \
-  --data-binary @- https://factory.talos.dev/schematics <<'EOF' | jq -r .id
-customization:
-  systemExtensions:
-    officialExtensions:
-      - siderolabs/netbird
-EOF
-)
-
-VER=$(awk -F'"' '/^talos_version/ {print $2}' \
-  opentofu/infrastructure/terraform.tfvars)
-
+cd talos
+ID=$(topf schematicids)
+VER=$(awk '/^talosVersion:/ {print $2}' topf.yaml)
 echo "https://factory.talos.dev/image/$ID/v$VER/metal-amd64.raw.xz"
 ```
 
-The Talos OpenTofu module recomputes the same ID at plan time for the
-installer image, so the running OS and the on-disk installer always match.
+topf derives the same ID for the installer image, so the running OS and the
+on-disk installer always match.
 
 ## Install Talos (Rescue System)
 
@@ -64,16 +56,16 @@ Locking down 50000/6443 to only NetBird overlay IPs is possible but loses
 the "rescue from anywhere" property if NetBird ever breaks. Trade-off is
 yours.
 
-## Per-Node Values for tfvars
+## Per-Node Values for topf.yaml
 
-After install, record in `opentofu/infrastructure/terraform.tfvars`:
+After install, record the node under `nodes` in `talos/topf.yaml`:
 
-```hcl
-nodes = {
-  talos-1 = {
-    public_ip         = "<server public IP>"
-    install_disk      = "/dev/nvme0n1"
-    network_interface = "enp41s0"  # check with `ip link` from rescue
-  }
-}
+```yaml
+nodes:
+  - host: talos-1
+    ip: 148.251.156.11   # public IP — topf's connection target
+    role: control-plane
 ```
+
+The install disk (`/dev/nvme0n1`) and interface (`enp41s0`) are set in
+`talos/all/machine.yaml`; check them from rescue with `lsblk` / `ip link`.

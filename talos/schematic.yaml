@@ -1,0 +1,5 @@
+# Talos Image Factory schematic, referenced from topf.yaml.
+customization:
+  systemExtensions:
+    officialExtensions:
+      - siderolabs/netbird

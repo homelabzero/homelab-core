@@ -8,7 +8,6 @@ dedicated server, accessed via NetBird, with Cilium CNI. Designed to scale
 
 0. [Infrastructure](docs/00-infrastructure.md)
 1. [Laptop Setup](docs/01-laptop-setup.md)
-2. [OpenTofu Backend](docs/02-opentofu-backend.md)
-3. [Dedicated Server](docs/03-dedicated-server.md)
-4. [Talos Cluster](docs/05-talos-cluster.md)
-5. [Cilium](docs/06-cilium.md)
+2. [Dedicated Server](docs/02-dedicated-server.md)
+3. [Talos Cluster](docs/03-talos-cluster.md)
+4. [Cilium](docs/04-cilium.md)

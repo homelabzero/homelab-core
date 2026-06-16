@@ -1,14 +1,12 @@
+# Machine + cluster config applied to every node.
 machine:
   install:
-    disk: ${install_disk}
-    image: ${installer_image}
+    disk: /dev/nvme0n1
   time:
     servers:
       - ntp1.hetzner.de
       - ntp2.hetzner.com
       - ntp3.hetzner.net
-  # kubelet reaches the apiserver via KubePrism on localhost:7445; KubePrism
-  # load-balances across all known apiservers. No external LB needed.
   features:
     kubePrism:
       enabled: true
@@ -18,22 +16,27 @@ machine:
       - 1.1.1.1
       - 8.8.8.8
     interfaces:
-      - interface: ${network_interface}
+      - interface: enp41s0
         dhcp: true
-    # Resolve the cluster endpoint to ourselves so on-host Talos controllers
-    # (StaticEndpointController, EndpointController, etc.) don't depend on
-    # NetBird DNS, which is not wired into the host resolver. Each node hits
-    # its own apiserver locally; the SAN is already covered by Talos.
+    # Resolve the cluster endpoint locally so on-host controllers don't need NetBird DNS.
     extraHostEntries:
       - ip: 127.0.0.1
         aliases:
-          - ${cluster_endpoint}
-  # OpenEBS Mayastor prerequisites — this node hosts workloads as well as CP.
+          - talos-1.netbird.cloud
+  # OpenEBS Mayastor prerequisites.
   sysctls:
     vm.nr_hugepages: "1024"
   nodeLabels:
     openebs.io/engine: mayastor
   kubelet:
+    # Pin node IP to the public IP; exclude the ephemeral NetBird CGNAT and
+    # Cilium/service ranges so the apiserver never advertises an unstable IP.
+    nodeIP:
+      validSubnets:
+        - 0.0.0.0/0
+        - "!100.64.0.0/10"
+        - "!10.244.0.0/16"
+        - "!10.96.0.0/12"
     extraMounts:
       - destination: /var/local
         type: bind
@@ -42,14 +45,13 @@ machine:
           - bind
           - rshared
           - rw
+# Cilium replaces kube-proxy + CNI; every node is a combined control-plane + worker.
 cluster:
-  # Cilium replaces kube-proxy + the CNI.
   network:
     cni:
       name: none
   proxy:
     disabled: true
-  # Workloads land on CPs (single-node today, also fine for 3-node HA).
   allowSchedulingOnControlPlanes: true
   apiServer:
     extraArgs:

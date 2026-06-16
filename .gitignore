@@ -51,6 +51,19 @@ terraform.rc
 backend.hcl
 
 # ---------------------------------------------------------------------------
+# Talos / topf
+# ---------------------------------------------------------------------------
+# Rendered machine configs — contain decrypted secrets, never commit.
+talos/output/
+# Plaintext secrets — only the *.sops.yaml encrypted versions are committed.
+talos/secrets.yaml
+talos/**/netbird.yaml
+# age private keys (should live in ~/.config/sops/age, never the repo)
+*.agekey
+age-key.txt
+keys.txt
+
+# ---------------------------------------------------------------------------
 # Helm
 # ---------------------------------------------------------------------------
 charts/*.tgz
