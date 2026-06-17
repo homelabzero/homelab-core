@@ -18,8 +18,6 @@ spec:
         valuesObject:
           crds:
             enabled: true
-          config:
-            enableGatewayAPI: true
     - repoURL: https://github.com/homelabzero/homelab-core
       targetRevision: HEAD
       path: kubernetes/cloudflare

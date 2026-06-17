@@ -21,11 +21,13 @@ spec:
         ui:
           enabled: true
         server:
+          ha:
+            enabled: false
           dataStorage:
-            storageClass: openebs-single-replica
+            storageClass: openebs-hostpath
+            size: 10Gi
           auditStorage:
-            enabled: true
-            storageClass: openebs-single-replica
+            enabled: false
           resources:
             requests:
               cpu: 100m
@@ -47,7 +49,6 @@ spec:
                 tls_disable     = "true"
               }
 
-              service_registration "kubernetes" {}
   destination:
     server: https://kubernetes.default.svc
     namespace: vault

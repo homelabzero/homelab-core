@@ -7,8 +7,8 @@ metadata:
 spec:
   instances: 1
   storage:
-    size: 5Gi
-    storageClass: openebs-single-replica
+    size: 10Gi
+    storageClass: openebs-hostpath
   bootstrap:
     initdb:
       database: authentik
