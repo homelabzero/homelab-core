@@ -23,21 +23,21 @@ spec:
             zfs:
               enabled: false
           replicated:
+            # Mayastor needs 3+ nodes to be useful; re-enable when scaling out.
             mayastor:
-              enabled: true
+              enabled: false
         loki:
           enabled: false
-        mayastor:
-          csi:
-            node:
-              initContainers:
-                enabled: false
-          etcd:
-            clusterDomain: cluster.local
-            replicaCount: 1
-            # ArgoCD runs this pre-upgrade hook on install too, before its secret exists — deadlocks the app.
-            preUpgradeJob:
-              enabled: false
+        # Grafana Alloy only ships logs to loki, which is disabled.
+        alloy:
+          enabled: false
+        localpv-provisioner:
+          localpv:
+            # Hostpath data lives on the dedicated nvme1n1 Talos user volume
+            # (machine config: UserVolumeConfig "openebs" -> /var/mnt/openebs).
+            basePath: /var/mnt/openebs
+          hostpathClass:
+            isDefaultClass: true
   destination:
     server: https://kubernetes.default.svc
     namespace: openebs
