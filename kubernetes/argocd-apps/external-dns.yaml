@@ -9,39 +9,42 @@ metadata:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  source:
-    repoURL: https://kubernetes-sigs.github.io/external-dns
-    targetRevision: 1.21.1
-    chart: external-dns
-    helm:
-      releaseName: external-dns
-      valuesObject:
-        provider:
-          name: cloudflare
-        domainFilters:
-          - internal.homelab0.xyz
-        sources:
-          - service
-          - gateway-httproute
-        policy: sync
-        txtOwnerId: homelab
-        txtPrefix: "edns-"
-        triggerLoopOnEvent: true
-        logFormat: json
-        extraArgs:
-          - --cloudflare-proxied=false
-        env:
-          - name: CF_API_TOKEN
-            valueFrom:
-              secretKeyRef:
-                name: cloudflare-api-token
-                key: api-token
-        resources:
-          requests:
-            cpu: 10m
-            memory: 32Mi
-          limits:
-            memory: 64Mi
+  sources:
+    - repoURL: https://kubernetes-sigs.github.io/external-dns
+      targetRevision: 1.21.1
+      chart: external-dns
+      helm:
+        releaseName: external-dns
+        valuesObject:
+          provider:
+            name: cloudflare
+          domainFilters:
+            - internal.homelab0.xyz
+          sources:
+            - service
+            - gateway-httproute
+          policy: sync
+          txtOwnerId: homelab
+          txtPrefix: "edns-"
+          triggerLoopOnEvent: true
+          logFormat: json
+          extraArgs:
+            - --cloudflare-proxied=false
+          env:
+            - name: CF_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: cloudflare-api-token
+                  key: api-token
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+    - repoURL: https://github.com/homelabzero/homelab-core
+      targetRevision: HEAD
+      path: kubernetes/cloudflare
   destination:
     server: https://kubernetes.default.svc
     namespace: external-dns

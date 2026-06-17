@@ -3,7 +3,7 @@
 ## Install Tools
 
 ```bash
-brew install talosctl kubectl helm cilium-cli postfinance/tap/topf sops age
+brew install talosctl kubectl helm cilium-cli hashicorp/tap/vault postfinance/tap/topf sops age
 ```
 
 ## NetBird Client

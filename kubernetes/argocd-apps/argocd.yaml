@@ -4,39 +4,50 @@ metadata:
   name: argocd
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-wave: "5"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  source:
-    repoURL: https://argoproj.github.io/argo-helm
-    targetRevision: 9.5.15
-    chart: argo-cd
-    helm:
-      releaseName: argocd
-      valuesObject:
-        global:
-          domain: argocd.internal.homelab0.xyz
-        notifications:
-          enabled: false
-        server:
-          insecure: true
-        configs:
-          cm:
-            url: https://argocd.internal.homelab0.xyz
-            dex.config: |
-              connectors:
-                - type: github
-                  id: github
-                  name: GitHub
-                  config:
-                    clientID: $dex.github.clientID
-                    clientSecret: $dex.github.clientSecret
-          rbac:
-            policy.default: ""
-            policy.csv: |
-              g, dmytro-rybak, role:admin
+  sources:
+    - repoURL: https://argoproj.github.io/argo-helm
+      targetRevision: 9.5.15
+      chart: argo-cd
+      helm:
+        releaseName: argocd
+        valuesObject:
+          global:
+            domain: argocd.internal.homelab0.xyz
+          notifications:
+            enabled: false
+          dex:
+            enabled: false
+          server:
+            insecure: true
+          configs:
+            cm:
+              url: https://argocd.internal.homelab0.xyz
+              admin.enabled: "true"
+              oidc.config: |
+                name: Authentik
+                issuer: https://authentik.internal.homelab0.xyz/application/o/argocd/
+                clientID: argocd
+                clientSecret: $argocd-oidc:clientSecret
+                requestedScopes:
+                  - openid
+                  - profile
+                  - email
+                  - groups
+                requestedIDTokenClaims:
+                  groups:
+                    essential: true
+            rbac:
+              policy.default: ""
+              policy.csv: |
+                g, authentik Admins, role:admin
+    - repoURL: https://github.com/homelabzero/homelab-core
+      targetRevision: HEAD
+      path: kubernetes/argocd
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd

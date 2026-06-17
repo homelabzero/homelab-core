@@ -4,22 +4,25 @@ metadata:
   name: cert-manager
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: "3"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
-  source:
-    repoURL: https://charts.jetstack.io
-    targetRevision: v1.20.2
-    chart: cert-manager
-    helm:
-      releaseName: cert-manager
-      valuesObject:
-        crds:
-          enabled: true
-        config:
-          enableGatewayAPI: true
+  sources:
+    - repoURL: https://charts.jetstack.io
+      targetRevision: v1.20.2
+      chart: cert-manager
+      helm:
+        releaseName: cert-manager
+        valuesObject:
+          crds:
+            enabled: true
+          config:
+            enableGatewayAPI: true
+    - repoURL: https://github.com/homelabzero/homelab-core
+      targetRevision: HEAD
+      path: kubernetes/cloudflare
   destination:
     server: https://kubernetes.default.svc
     namespace: cert-manager

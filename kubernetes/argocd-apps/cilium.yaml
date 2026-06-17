@@ -50,7 +50,6 @@ spec:
             enabled: true
           l2announcements:
             enabled: true
-          mtu: 1400
           hubble:
             relay:
               enabled: true
@@ -58,7 +57,7 @@ spec:
               enabled: true
           operator:
             replicas: 1
-    - repoURL: https://github.com/dmytro-rybak/homelab
+    - repoURL: https://github.com/homelabzero/homelab-core
       targetRevision: HEAD
       path: kubernetes/cilium
   destination:

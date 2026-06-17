@@ -1,0 +1,16 @@
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: argocd-oidc
+  namespace: argocd
+spec:
+  vaultAuthRef: vault/default
+  mount: secret
+  path: core/argocd-oidc
+  type: kv-v2
+  refreshAfter: 1h
+  destination:
+    name: argocd-oidc
+    create: true
+    labels:
+      app.kubernetes.io/part-of: argocd

@@ -1,0 +1,13 @@
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: authentik-github-oauth
+spec:
+  vaultAuthRef: vault/default
+  mount: secret
+  path: core/authentik-github-oauth
+  type: kv-v2
+  refreshAfter: 1h
+  destination:
+    name: authentik-github-oauth
+    create: true
