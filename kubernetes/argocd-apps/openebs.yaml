@@ -35,6 +35,9 @@ spec:
           etcd:
             clusterDomain: cluster.local
             replicaCount: 1
+            # ArgoCD runs this pre-upgrade hook on install too, before its secret exists — deadlocks the app.
+            preUpgradeJob:
+              enabled: false
   destination:
     server: https://kubernetes.default.svc
     namespace: openebs
