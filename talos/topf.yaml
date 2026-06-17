@@ -12,9 +12,7 @@ schematicId: "@schematic.yaml"
 secretsPath: secrets.sops.yaml
 
 nodes:
-  # `ip` is topf's connection target only and must be a literal IP. Keep the
-  # public IP (the only address reachable in maintenance mode). Day-2 the public
-  # Talos API is unreachable from the laptop — see docs/05-talos-cluster.md.
+  # topf connection target (literal IP): NetBird IP day-2; use public 148.251.156.11 for maintenance-mode reprovision.
   - host: talos-1
-    ip: 148.251.156.11
+    ip: 100.76.19.49
     role: control-plane

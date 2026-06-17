@@ -1,8 +1,4 @@
-# Dedicated data volume for OpenEBS hostpath storage.
-# Consumes the only non-system NVMe (nvme1n1), formats it xfs, and mounts it
-# at /var/mnt/openebs. Talos auto-propagates the mount into the kubelet, so it
-# is usable directly as a hostPath — the openebs-hostpath StorageClass points
-# its basePath here (see kubernetes/argocd-apps/openebs.yaml).
+# Dedicated nvme1n1 volume mounted at /var/mnt/openebs for OpenEBS hostpath.
 apiVersion: v1alpha1
 kind: UserVolumeConfig
 name: openebs
