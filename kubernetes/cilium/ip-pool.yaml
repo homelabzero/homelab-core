@@ -1,9 +1,7 @@
-apiVersion: "cilium.io/v2"
+apiVersion: cilium.io/v2
 kind: CiliumLoadBalancerIPPool
 metadata:
-  name: homelab-pool
+  name: private-pool
 spec:
   blocks:
-    - cidr: "148.251.156.11/32" # public NIC (enp41s0) -> gateway-public
-    # NetBird-routed IP (never the node's own wt0 peer IP 100.76.19.49).
-    - cidr: "10.60.0.10/32"
+    - cidr: 10.60.0.0/28
