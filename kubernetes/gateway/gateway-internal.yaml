@@ -6,8 +6,9 @@ metadata:
 spec:
   gatewayClassName: cilium
   addresses:
+    # NetBird-routed IP (10.60.0.0/24 via talos-1); reachable only over NetBird.
     - type: IPAddress
-      value: "10.50.0.100"
+      value: "10.60.0.10"
   listeners:
     - name: http
       protocol: HTTP

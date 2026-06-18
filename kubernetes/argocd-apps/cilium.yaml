@@ -60,12 +60,16 @@ spec:
     - repoURL: https://github.com/homelabzero/homelab-core
       targetRevision: HEAD
       path: kubernetes/cilium
+    - repoURL: https://github.com/kubernetes-sigs/gateway-api
+      targetRevision: v1.4.1
+      path: config/crd/standard
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system
   syncPolicy:
     syncOptions:
       - CreateNamespace=true
+      - ServerSideApply=true
     automated:
       prune: true
       selfHeal: true

@@ -4,5 +4,6 @@ metadata:
   name: homelab-pool
 spec:
   blocks:
-    - start: "10.50.0.100"
-      stop: "10.50.0.109"
+    - cidr: "148.251.156.11/32" # public NIC (enp41s0) -> gateway-public
+    # NetBird-routed IP (never the node's own wt0 peer IP 100.76.19.49).
+    - cidr: "10.60.0.10/32"

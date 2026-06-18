@@ -28,8 +28,6 @@ spec:
           txtPrefix: "edns-"
           triggerLoopOnEvent: true
           logFormat: json
-          extraArgs:
-            - --cloudflare-proxied=false
           env:
             - name: CF_API_TOKEN
               valueFrom:
