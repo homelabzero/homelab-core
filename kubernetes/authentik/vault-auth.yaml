@@ -1,0 +1,5 @@
+# SA used by VaultStaticSecrets in this namespace to authenticate to Vault.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: vault-auth
