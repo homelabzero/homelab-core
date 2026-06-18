@@ -118,9 +118,13 @@ vault secrets enable -path=secret -version=2 kv
 
 ### Enable Kubernetes auth for Vault Secrets Operator
 
-The VSO app (`defaultAuthMethod` in `vso.yaml`) authenticates as the
-`vault-secrets-operator-controller-manager` service account in the `vault`
-namespace, audience `vault`.
+The VSO app (`defaultAuthMethod` in `vso.yaml`) authenticates with the
+`vault-auth` service account, audience `vault`. VSO resolves that ServiceAccount
+in the **consuming secret's own namespace** (not the operator's), so every
+namespace that holds a `VaultStaticSecret` ships its own `vault-auth` SA
+(`kubernetes/<app>/vault-auth.yaml`). The role below therefore binds the
+`vault-auth` name across **all** namespaces — each new consumer just adds a
+`vault-auth` SA, no Vault change needed.
 
 ```bash
 vault auth enable kubernetes
@@ -133,8 +137,8 @@ path "secret/metadata/*" { capabilities = ["read", "list"] }
 EOF
 
 vault write auth/kubernetes/role/vault-secrets-operator \
-  bound_service_account_names=vault-secrets-operator-controller-manager \
-  bound_service_account_namespaces=vault \
+  bound_service_account_names=vault-auth \
+  bound_service_account_namespaces='*' \
   audience=vault \
   policies=vso \
   ttl=1h
