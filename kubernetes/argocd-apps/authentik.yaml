@@ -27,6 +27,7 @@ spec:
           blueprints:
             configMaps:
               - authentik-blueprints
+              - authentik-blueprints-argocd
           env:
             - name: AUTHENTIK_POSTGRESQL__PASSWORD
               valueFrom:
@@ -48,6 +49,11 @@ spec:
                 secretKeyRef:
                   name: authentik-github-oauth
                   key: client-secret
+            - name: ARGOCD_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: argocd-oidc
+                  key: clientSecret
           server:
             resources:
               requests:

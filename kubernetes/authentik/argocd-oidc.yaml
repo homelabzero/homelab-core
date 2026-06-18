@@ -1,0 +1,16 @@
+# Same Vault value Argo CD consumes (kubernetes/argocd/argocd-oidc.yaml),
+# projected into the authentik namespace so the blueprint can read it via
+# the ARGOCD_OIDC_CLIENT_SECRET env var (!Env in blueprint-argocd.yaml).
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: argocd-oidc
+spec:
+  vaultAuthRef: vault/default
+  mount: secret
+  path: core/argocd-oidc
+  type: kv-v2
+  refreshAfter: 1h
+  destination:
+    name: argocd-oidc
+    create: true
