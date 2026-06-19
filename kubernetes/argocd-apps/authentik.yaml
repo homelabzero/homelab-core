@@ -28,6 +28,7 @@ spec:
             configMaps:
               - authentik-blueprints
               - authentik-blueprints-argocd
+              - authentik-blueprints-login
           global:
             env:
               - name: AUTHENTIK_POSTGRESQL__PASSWORD

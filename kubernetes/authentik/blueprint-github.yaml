@@ -77,35 +77,20 @@ data:
           enrollment_flow: !Find [authentik_flows.flow, [slug, default-source-enrollment]]
           authentication_flow: !Find [authentik_flows.flow, [slug, default-source-authentication]]
 
-      # Enforce the org policy during source enrollment
+      # Enforce the org policy during source enrollment.
+      # NOTE: !Find (not !KeyOf) on the policy — KeyOf to a same-blueprint entry
+      # fails to resolve here in 2026.5.2. This binding is also not idempotent
+      # on an already-populated DB (authentik matches the target on flow_uuid
+      # but stores pbm_uuid), so on the current cluster this blueprint's apply
+      # reports "error" after the first run; the objects above are unaffected.
+      # On a fresh DB it applies cleanly once, creating this binding. The login
+      # button + akadmin changes live in blueprint-login.yaml so they are never
+      # blocked by this.
       - model: authentik_policies.policybinding
         state: present
         identifiers:
-          policy: !KeyOf github-org-policy
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, github-org-membership]]
           target: !Find [authentik_flows.flow, [slug, default-source-enrollment]]
           order: 0
         attrs:
           enabled: true
-
-      # Show the GitHub source as a login button on the default login page.
-      # Without this the identification stage only renders user/password and the
-      # "Login with GitHub" button never appears.
-      - model: authentik_stages_identification.identificationstage
-        state: present
-        identifiers:
-          name: default-authentication-identification
-        attrs:
-          sources:
-            - !KeyOf github-source
-
-      # Disable the built-in bootstrap admin entirely. Access is GitHub-only;
-      # org members are granted admin via the "authentik Admins" group above.
-      # akadmin is seeded with AUTHENTIK_BOOTSTRAP_PASSWORD at first DB init so
-      # the OOBE setup window never appears, then deactivated here. Break-glass:
-      # `ak shell` -> set akadmin.is_active=True and reset its password.
-      - model: authentik_core.user
-        state: present
-        identifiers:
-          username: akadmin
-        attrs:
-          is_active: false

@@ -1,0 +1,38 @@
+# Login-experience fixups, kept separate from blueprint-github.yaml because
+# that blueprint contains a policy->flow binding that authentik cannot re-match
+# idempotently (it matches a binding target on flow_uuid but stores pbm_uuid),
+# so its apply flaps to "error" and would roll back everything in the same
+# blueprint. These two entries use only stable natural-key identifiers and are
+# fully idempotent, so they always apply.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-blueprints-login
+data:
+  login-fixups.yaml: |
+    version: 1
+    metadata:
+      name: github-login-fixups
+    entries:
+      # Show the GitHub source as a login button on the default login page.
+      # Without this the identification stage only renders user/password and the
+      # "Login with GitHub" button never appears.
+      - model: authentik_stages_identification.identificationstage
+        state: present
+        identifiers:
+          name: default-authentication-identification
+        attrs:
+          sources:
+            - !Find [authentik_sources_oauth.oauthsource, [slug, github]]
+
+      # Disable the built-in bootstrap admin entirely. Access is GitHub-only;
+      # org members are granted admin via the "authentik Admins" group. akadmin
+      # is seeded with AUTHENTIK_BOOTSTRAP_PASSWORD at first DB init so the OOBE
+      # setup window never appears, then deactivated here. Break-glass: `ak
+      # shell` -> set akadmin.is_active=True and reset its password.
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: akadmin
+        attrs:
+          is_active: false
