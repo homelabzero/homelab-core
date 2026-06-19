@@ -28,32 +28,43 @@ spec:
             configMaps:
               - authentik-blueprints
               - authentik-blueprints-argocd
-          env:
-            - name: AUTHENTIK_POSTGRESQL__PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: authentik-db-app
-                  key: password
-            - name: AUTHENTIK_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: authentik-secret-key
-                  key: secret-key
-            - name: GITHUB_CLIENT_ID
-              valueFrom:
-                secretKeyRef:
-                  name: authentik-github-oauth
-                  key: client-id
-            - name: GITHUB_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: authentik-github-oauth
-                  key: client-secret
-            - name: ARGOCD_OIDC_CLIENT_SECRET
-              valueFrom:
-                secretKeyRef:
-                  name: argocd-oidc
-                  key: clientSecret
+          global:
+            env:
+              - name: AUTHENTIK_POSTGRESQL__PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: authentik-db-app
+                    key: password
+              - name: AUTHENTIK_SECRET_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: authentik-secret-key
+                    key: secret-key
+              # Seeds akadmin with a usable password at first DB init so the
+              # OOBE "set admin password" setup window never appears. akadmin is
+              # then deactivated by the github blueprint, so this value is a
+              # throwaway and never used to log in — we just reuse the existing
+              # random secret-key. Break-glass is via `ak shell` (reset akadmin).
+              - name: AUTHENTIK_BOOTSTRAP_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: authentik-secret-key
+                    key: secret-key
+              - name: GITHUB_CLIENT_ID
+                valueFrom:
+                  secretKeyRef:
+                    name: authentik-github-oauth
+                    key: client-id
+              - name: GITHUB_CLIENT_SECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: authentik-github-oauth
+                    key: client-secret
+              - name: ARGOCD_OIDC_CLIENT_SECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: argocd-oidc
+                    key: clientSecret
           server:
             resources:
               requests:

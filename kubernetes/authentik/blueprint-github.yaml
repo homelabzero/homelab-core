@@ -86,3 +86,26 @@ data:
           order: 0
         attrs:
           enabled: true
+
+      # Show the GitHub source as a login button on the default login page.
+      # Without this the identification stage only renders user/password and the
+      # "Login with GitHub" button never appears.
+      - model: authentik_stages_identification.identificationstage
+        state: present
+        identifiers:
+          name: default-authentication-identification
+        attrs:
+          sources:
+            - !KeyOf github-source
+
+      # Disable the built-in bootstrap admin entirely. Access is GitHub-only;
+      # org members are granted admin via the "authentik Admins" group above.
+      # akadmin is seeded with AUTHENTIK_BOOTSTRAP_PASSWORD at first DB init so
+      # the OOBE setup window never appears, then deactivated here. Break-glass:
+      # `ak shell` -> set akadmin.is_active=True and reset its password.
+      - model: authentik_core.user
+        state: present
+        identifiers:
+          username: akadmin
+        attrs:
+          is_active: false
