@@ -19,7 +19,7 @@ spec:
           provider:
             name: cloudflare
           domainFilters:
-            - internal.homelab0.xyz
+            - homelab0.xyz
           sources:
             - service
             - gateway-httproute
