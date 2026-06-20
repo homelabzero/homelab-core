@@ -33,6 +33,13 @@ data:
           client_type: confidential
           client_id: argocd
           client_secret: !Env ARGOCD_OIDC_CLIENT_SECRET
+          # Blueprint-created providers default grant_types to [] (the UI would
+          # default these on). Empty => authentik rejects the authorization_code
+          # request as "invalid_request / malformed". ArgoCD uses the auth-code
+          # flow; refresh_token lets it refresh the session token.
+          grant_types:
+            - authorization_code
+            - refresh_token
           authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
           invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
           signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
