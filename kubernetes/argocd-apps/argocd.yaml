@@ -27,7 +27,7 @@ spec:
           configs:
             cm:
               url: https://argocd.internal.homelab0.xyz
-              admin.enabled: "true"
+              admin.enabled: "false"
               oidc.config: |
                 name: Authentik
                 issuer: https://authentik.internal.homelab0.xyz/application/o/argocd/
