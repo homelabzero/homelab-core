@@ -22,9 +22,13 @@ spec:
             enabled: false
           dex:
             enabled: false
-          server:
-            insecure: true
           configs:
+            # Gateway terminates TLS and forwards plain HTTP to argocd-server.
+            # Without insecure mode the server 307-redirects HTTP->HTTPS, which
+            # loops forever behind the gateway. The chart's top-level
+            # server.insecure is NOT honored in 9.5.15; it must be a param here.
+            params:
+              server.insecure: true
             cm:
               url: https://argocd.internal.homelab0.xyz
               admin.enabled: "false"
