@@ -18,7 +18,11 @@ data:
         attrs:
           is_superuser: true
 
-      # Expression policy: only allow members of the GitHub org
+      # Expression policy: gate enrollment/auth to GitHub org members only.
+      # This policy ONLY decides allow/deny — it does not assign groups.
+      # Admin is granted via the user property mapping below (bound to the
+      # source), because group assignment must happen on the source's group
+      # sync where flow_plan exists, not in a flow-root policy binding.
       - model: authentik_policies_expression.expressionpolicy
         state: present
         identifiers:
@@ -26,38 +30,48 @@ data:
         id: github-org-policy
         attrs:
           expression: |
+            from authentik.sources.oauth.models import OAuthSource
+
             accepted_org = "homelabzero"
 
             # Only enforce this check for logins coming from the GitHub source
-            if context["source"].provider_type != "github":
+            source = context.get("source")
+            if not isinstance(source, OAuthSource) or source.provider_type != "github":
                 return True
 
             connection = context["goauthentik.io/sources/connection"]
             access_token = connection.access_token
 
-            orgs = requests.get(
+            resp = requests.get(
                 "https://api.github.com/user/orgs",
                 headers={
                     "Authorization": f"token {access_token}",
                     "Accept": "application/vnd.github+json",
                 },
-            ).json()
+            )
+            resp.raise_for_status()
+            orgs = resp.json()
 
             if not any(o["login"] == accepted_org for o in orgs):
                 ak_message(f"User is not a member of {accepted_org}.")
                 return False
 
-            # For now: every org member is granted admin via "authentik Admins"
-            from authentik.core.models import Group
-
-            admin_group = Group.objects.filter(name="authentik Admins").first()
-            flow_plan = context.get("flow_plan")
-            if admin_group and flow_plan is not None:
-                groups = flow_plan.context.setdefault("groups", [])
-                if admin_group not in groups:
-                    groups.append(admin_group)
-
             return True
+
+      # Grant admin to every org member. The above policy guarantees only org
+      # members complete the flow, so this user property mapping unconditionally
+      # puts them in "authentik Admins" (is_superuser). authentik's source group
+      # sync reads user_properties["groups"], then matches each entry to a Group
+      # by name (group_matching_mode: name_link on the source), linking the user
+      # to the existing superuser group. Idempotent: re-synced on every login.
+      - model: authentik_sources_oauth.oauthsourcepropertymapping
+        state: present
+        identifiers:
+          name: github-admin-groups
+        id: github-admin-mapping
+        attrs:
+          expression: |
+            return {"groups": ["authentik Admins"]}
 
       # GitHub OAuth source (credentials injected via env -> !Env)
       - model: authentik_sources_oauth.oauthsource
@@ -74,6 +88,11 @@ data:
           consumer_secret: !Env GITHUB_CLIENT_SECRET
           additional_scopes: "read:org"
           user_matching_mode: email_link
+          # Match returned group names against existing authentik groups by name,
+          # so "authentik Admins" from the mapping links to the superuser group.
+          group_matching_mode: name_link
+          user_property_mappings:
+            - !Find [authentik_sources_oauth.oauthsourcepropertymapping, [name, github-admin-groups]]
           enrollment_flow: !Find [authentik_flows.flow, [slug, default-source-enrollment]]
           authentication_flow: !Find [authentik_flows.flow, [slug, default-source-authentication]]
 

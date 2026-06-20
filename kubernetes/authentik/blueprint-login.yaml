@@ -2,7 +2,7 @@
 # that blueprint contains a policy->flow binding that authentik cannot re-match
 # idempotently (it matches a binding target on flow_uuid but stores pbm_uuid),
 # so its apply flaps to "error" and would roll back everything in the same
-# blueprint. These two entries use only stable natural-key identifiers and are
+# blueprint. These entries use only stable natural-key identifiers and are
 # fully idempotent, so they always apply.
 apiVersion: v1
 kind: ConfigMap
@@ -24,6 +24,18 @@ data:
         attrs:
           sources:
             - !Find [authentik_sources_oauth.oauthsource, [slug, github]]
+
+      # Enroll GitHub source users as internal, not external. The default
+      # source-enrollment write stage creates external users, and external
+      # users are barred from the authentik interface ("can only be accessed
+      # by internal users"). GitHub is our only source, so all enrollees here
+      # are real homelab users who need UI access.
+      - model: authentik_stages_user_write.userwritestage
+        state: present
+        identifiers:
+          name: default-source-enrollment-write
+        attrs:
+          user_type: internal
 
       # Disable the built-in bootstrap admin entirely. Access is GitHub-only;
       # org members are granted admin via the "authentik Admins" group. akadmin
