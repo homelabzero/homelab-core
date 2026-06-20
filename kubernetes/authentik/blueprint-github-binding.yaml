@@ -1,0 +1,28 @@
+# Isolated policy->flow binding that gates GitHub source enrollment to org
+# members. Kept in its own blueprint because authentik's importer validates
+# every entry before applying any, and this policybinding fails re-validation
+# on an already-populated DB: the unique set (policy, target, order) already
+# exists, but the importer attempts a create instead of matching the existing
+# row (it resolves the flow's pk where the stored binding uses the
+# PolicyBindingModel pk). On a fresh DB it applies once and creates the binding;
+# thereafter this blueprint's apply reports "error" while the binding persists.
+# By isolating it, that perpetual error cannot block blueprint-github.yaml
+# (source, policy, group, property mapping) from applying updates.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-blueprints-github-binding
+data:
+  github-binding.yaml: |
+    version: 1
+    metadata:
+      name: github-org-binding
+    entries:
+      - model: authentik_policies.policybinding
+        state: present
+        identifiers:
+          policy: !Find [authentik_policies_expression.expressionpolicy, [name, github-org-membership]]
+          target: !Find [authentik_flows.flow, [slug, default-source-enrollment]]
+          order: 0
+        attrs:
+          enabled: true

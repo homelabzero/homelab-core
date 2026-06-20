@@ -29,6 +29,7 @@ spec:
               - authentik-blueprints
               - authentik-blueprints-argocd
               - authentik-blueprints-login
+              - authentik-blueprints-github-binding
           global:
             env:
               - name: AUTHENTIK_POSTGRESQL__PASSWORD

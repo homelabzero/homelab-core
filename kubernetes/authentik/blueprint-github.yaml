@@ -95,21 +95,10 @@ data:
             - !Find [authentik_sources_oauth.oauthsourcepropertymapping, [name, github-admin-groups]]
           enrollment_flow: !Find [authentik_flows.flow, [slug, default-source-enrollment]]
           authentication_flow: !Find [authentik_flows.flow, [slug, default-source-authentication]]
-
-      # Enforce the org policy during source enrollment.
-      # NOTE: !Find (not !KeyOf) on the policy — KeyOf to a same-blueprint entry
-      # fails to resolve here in 2026.5.2. This binding is also not idempotent
-      # on an already-populated DB (authentik matches the target on flow_uuid
-      # but stores pbm_uuid), so on the current cluster this blueprint's apply
-      # reports "error" after the first run; the objects above are unaffected.
-      # On a fresh DB it applies cleanly once, creating this binding. The login
-      # button + akadmin changes live in blueprint-login.yaml so they are never
-      # blocked by this.
-      - model: authentik_policies.policybinding
-        state: present
-        identifiers:
-          policy: !Find [authentik_policies_expression.expressionpolicy, [name, github-org-membership]]
-          target: !Find [authentik_flows.flow, [slug, default-source-enrollment]]
-          order: 0
-        attrs:
-          enabled: true
+      # The policy->flow binding that gates enrollment to org members lives in
+      # blueprint-github-binding.yaml, NOT here. authentik's importer validates
+      # ALL entries before applying ANY, and that binding fails re-validation on
+      # a populated DB (unique (policy,target,order); the importer tries to
+      # create rather than match the existing row). If it lived in this
+      # blueprint it would block every entry above from ever updating. Isolated,
+      # it only flaps itself; the binding persists in the DB once created.
