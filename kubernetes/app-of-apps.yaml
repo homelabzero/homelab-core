@@ -21,3 +21,13 @@ spec:
       prune: true
       selfHeal: true
   revisionHistoryLimit: 3
+  # ArgoCD stamps PreDelete-hook finalizers
+  # (pre-delete-finalizer.argocd.argoproj.io[/cleanup]) onto any child
+  # Application whose chart ships a Helm pre-delete/post-delete hook (e.g. the
+  # vault-secrets-operator chart's cleanup Job). Those finalizers aren't in Git,
+  # so root sees perpetual drift on the Application object. Ignore them.
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Application
+      jsonPointers:
+        - /metadata/finalizers
