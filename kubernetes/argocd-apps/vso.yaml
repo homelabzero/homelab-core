@@ -38,3 +38,13 @@ spec:
       prune: true
       selfHeal: true
   revisionHistoryLimit: 3
+  # The chart's pre-delete cleanup Job is a Helm `pre-delete` hook. ArgoCD
+  # turns it into a PreDelete hook and stamps it with its own finalizers
+  # (pre-delete-finalizer.argocd.argoproj.io[/cleanup]), which aren't in git
+  # and therefore show as perpetual finalizer drift. Ignore them.
+  ignoreDifferences:
+    - group: batch
+      kind: Job
+      name: pdcc-vault-secrets-operator
+      jsonPointers:
+        - /metadata/finalizers
