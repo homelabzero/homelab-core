@@ -1,0 +1,18 @@
+# Client secret for the Vault OIDC provider, stored in Vault at
+# secret/core/vault-oidc, projected into the authentik namespace so the
+# blueprint can read it via the VAULT_OIDC_CLIENT_SECRET env var
+# (!Env in blueprint-vault.yaml). Vault's own auth/oidc/config uses the
+# same value as oidc_client_secret.
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: vault-oidc
+spec:
+  vaultAuthRef: vault/default
+  mount: secret
+  path: core/vault-oidc
+  type: kv-v2
+  refreshAfter: 1h
+  destination:
+    name: vault-oidc
+    create: true

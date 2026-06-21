@@ -167,6 +167,10 @@ vault kv put secret/core/authentik-github-oauth \
 
 # Argo CD OIDC client secret — value comes from Authentik (step 5), seed empty now
 vault kv put secret/core/argocd-oidc clientSecret=""
+
+# Vault's own OIDC client secret (Vault is the OIDC client, Authentik the IdP).
+# Generate it here and reuse the SAME value in auth/oidc/config (step 7).
+vault kv put secret/core/vault-oidc clientSecret="$(openssl rand -base64 48)"
 ```
 
 > **Note — paths/keys must match the VaultStaticSecret manifests.** VSO reads
@@ -180,6 +184,7 @@ vault kv put secret/core/argocd-oidc clientSecret=""
 > | `core/authentik-secret-key` | `secret-key` | `authentik-secret-key` (`authentik`) | `kubernetes/authentik/secret-key.yaml` |
 > | `core/authentik-github-oauth` | `client-id`, `client-secret` | `authentik-github-oauth` (`authentik`) | `kubernetes/authentik/github-oauth.yaml` |
 > | `core/argocd-oidc` | `clientSecret` | `argocd-oidc` (`argocd`) | `kubernetes/argocd/argocd-oidc.yaml` |
+> | `core/vault-oidc` | `clientSecret` | `vault-oidc` (`authentik`) | `kubernetes/authentik/vault-oidc.yaml` (consumed by Authentik as `VAULT_OIDC_CLIENT_SECRET`; the same value is set in Vault's `auth/oidc/config`) |
 
 ## 4. Let GitOps finish
 
@@ -225,6 +230,82 @@ Commit; the `argocd` app reconciles it and the local admin login is gone.
 > in Git — the application-controller re-enables admin on its own (it syncs
 > without a logged-in user). Or patch live: `kubectl -n argocd patch cm
 > argocd-cm --type merge -p '{"data":{"admin.enabled":"true"}}'`.
+
+## 7. Wire Vault ↔ Authentik SSO (after Authentik is up)
+
+Authentik already ships the Vault OIDC provider/application as GitOps
+(`kubernetes/authentik/blueprint-vault.yaml`, slug `vault`, issuer
+`https://authentik.internal.homelab0.xyz/application/o/vault/`). Its client
+secret is the `core/vault-oidc` value seeded in step 3 — Authentik reads it as
+`VAULT_OIDC_CLIENT_SECRET`, and you set the *same* value on Vault below. The
+Vault auth method itself is configured by hand (like the Kubernetes auth method
+above — Vault config is not GitOps).
+
+```bash
+# Reuse the value seeded into Vault in step 3, so client + IdP agree.
+CS=$(vault kv get -field=clientSecret secret/core/vault-oidc)
+
+vault auth enable oidc
+vault write auth/oidc/config \
+  oidc_discovery_url="https://authentik.internal.homelab0.xyz/application/o/vault/" \
+  oidc_client_id="vault" \
+  oidc_client_secret="$CS" \
+  default_role="default"
+
+# Full-access policy (OSS has no built-in "admin" policy).
+vault policy write admin - <<'EOF'
+path "*" { capabilities = ["create","read","update","delete","list","sudo","patch"] }
+EOF
+
+# OIDC login role. groups_claim lets Vault map Authentik groups -> policies.
+vault write auth/oidc/role/default \
+  user_claim="sub" \
+  oidc_scopes="openid,profile,email,groups" \
+  groups_claim="groups" \
+  allowed_redirect_uris="https://vault.internal.homelab0.xyz/ui/vault/auth/oidc/oidc/callback,http://localhost:8250/oidc/callback" \
+  token_policies="default" \
+  token_ttl="1h"
+
+# Bind the Authentik "authentik Admins" group (every GitHub-org member, via the
+# existing source mapping) to the admin policy through an external identity group.
+vault write identity/group name="authentik Admins" type="external" policies="admin"
+GROUP_ID=$(vault read -field=id identity/group/name/"authentik Admins")
+ACCESSOR=$(vault auth list -format=json | jq -r '."oidc/".accessor')
+vault write identity/group-alias name="authentik Admins" \
+  mount_accessor="$ACCESSOR" canonical_id="$GROUP_ID"
+```
+
+Log in to confirm before hardening:
+
+```bash
+# CLI (opens a browser to Authentik):
+vault login -method=oidc role=default
+# UI: https://vault.internal.homelab0.xyz → method "OIDC" (or append
+#     ?with=oidc%2F to the login URL).
+```
+
+## 8. Make Authentik the only human login (final hardening)
+
+Only after an OIDC login lands you with the `admin` policy. Two structural
+caveats: the **`token`** auth method is built in and can never be disabled (it
+backs every issued token, including the ones OIDC mints), and the
+**`kubernetes`** auth method **must stay** — VSO uses it to materialize every
+Secret in the cluster; disabling it breaks cert-manager, external-dns,
+Authentik, Argo CD and more. No other interactive method (userpass/ldap/github)
+is enabled, so the only remaining human path is the initial **root token** —
+revoke it:
+
+```bash
+vault auth list          # sanity: expect only kubernetes/, oidc/, token/
+vault token revoke <ROOT_TOKEN>
+```
+
+OIDC via Authentik is now the only way a human logs in.
+
+> **Break-glass.** With the root token gone, regenerate one from the unseal key:
+> `vault operator generate-root -init`, then `vault operator generate-root` with
+> your unseal key (and the OTP) to recover a one-time root token. Keep the unseal
+> key safe — it is the only recovery path.
 
 ## Notes
 

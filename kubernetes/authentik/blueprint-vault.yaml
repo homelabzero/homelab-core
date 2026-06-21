@@ -1,0 +1,68 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-blueprints-vault
+data:
+  vault-provider.yaml: |
+    version: 1
+    metadata:
+      name: vault-oidc-provider
+    entries:
+      # Scope mapping that emits the user's group names as a "groups" claim.
+      # Vault's OIDC role maps this claim to Vault policies (groups_claim=groups).
+      - model: authentik_providers_oauth2.scopemapping
+        state: present
+        identifiers:
+          name: "OAuth Mapping: Vault groups"
+        id: vault-groups-scope
+        attrs:
+          scope_name: groups
+          description: "Vault groups"
+          expression: |
+            return [group.name for group in request.user.ak_groups.all()]
+
+      # OAuth2 / OIDC provider for Vault. client_secret comes from the env var
+      # VAULT_OIDC_CLIENT_SECRET (fed from Vault via VSO), so no UI step.
+      - model: authentik_providers_oauth2.oauth2provider
+        state: present
+        identifiers:
+          name: vault
+        id: vault-provider
+        attrs:
+          name: vault
+          client_type: confidential
+          client_id: vault
+          client_secret: !Env VAULT_OIDC_CLIENT_SECRET
+          # Blueprint-created providers default grant_types to [] (the UI would
+          # default these on). Empty => authentik rejects the authorization_code
+          # request. Vault's OIDC auth uses the auth-code flow; refresh_token
+          # lets Vault refresh the session.
+          grant_types:
+            - authorization_code
+            - refresh_token
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
+          # Vault UI callback is /ui/vault/auth/<path>/oidc/callback (path=oidc);
+          # the CLI (`vault login -method=oidc`) uses localhost:8250.
+          redirect_uris:
+            - matching_mode: strict
+              url: https://vault.internal.homelab0.xyz/ui/vault/auth/oidc/oidc/callback
+            - matching_mode: strict
+              url: http://localhost:8250/oidc/callback
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
+            - !KeyOf vault-groups-scope
+
+      # Application tile; slug "vault" => issuer .../application/o/vault/
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: vault
+        id: vault-app
+        attrs:
+          name: Vault
+          slug: vault
+          provider: !KeyOf vault-provider

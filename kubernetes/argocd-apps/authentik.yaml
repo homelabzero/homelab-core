@@ -28,6 +28,7 @@ spec:
             configMaps:
               - authentik-blueprints
               - authentik-blueprints-argocd
+              - authentik-blueprints-vault
               - authentik-blueprints-login
               - authentik-blueprints-github-binding
           global:
@@ -66,6 +67,11 @@ spec:
                 valueFrom:
                   secretKeyRef:
                     name: argocd-oidc
+                    key: clientSecret
+              - name: VAULT_OIDC_CLIENT_SECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: vault-oidc
                     key: clientSecret
           server:
             resources:
