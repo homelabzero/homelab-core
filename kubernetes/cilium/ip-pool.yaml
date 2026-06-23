@@ -3,5 +3,9 @@ kind: CiliumLoadBalancerIPPool
 metadata:
   name: private-pool
 spec:
+  allowFirstLastIPs: "No"
+  serviceSelector:
+    matchLabels:
+      io.kubernetes.service.namespace: gateway
   blocks:
     - cidr: 10.60.0.0/28

@@ -5,6 +5,10 @@ metadata:
   namespace: gateway
 spec:
   gatewayClassName: cilium
+  # Pinned LB VIP from private-pool (10.60.0.0/28); wildcard *.internal.homelab0.xyz points here.
+  addresses:
+    - type: IPAddress
+      value: "10.60.0.1"
   listeners:
     - name: http
       protocol: HTTP
