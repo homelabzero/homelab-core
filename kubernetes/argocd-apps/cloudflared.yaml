@@ -32,6 +32,19 @@ spec:
             - hostname: "*.homelab0.xyz"
               service: http://cilium-gateway-gateway-public.gateway.svc.cluster.local:80
             - service: http_status:404
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 2000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 2000
+            initialDelaySeconds: 10
+            periodSeconds: 10
           resources:
             requests:
               cpu: 50m

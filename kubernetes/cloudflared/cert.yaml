@@ -11,3 +11,5 @@ spec:
   destination:
     name: cloudflared-cert
     create: true
+    transformation:
+      excludeRaw: true
