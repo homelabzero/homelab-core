@@ -20,7 +20,7 @@ spec:
             allNodes: true
           tunnelConfig:
             name: "141790c7-b609-49c9-849f-dacc38b5197f"
-            protocol: auto
+            protocol: http2
           tunnelSecrets:
             existingPemFileSecret:
               name: cloudflared-cert
