@@ -1,0 +1,13 @@
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: cloudflared-cert
+spec:
+  vaultAuthRef: vault/default
+  mount: secret
+  path: core/cloudflared-cert
+  type: kv-v2
+  refreshAfter: 1h
+  destination:
+    name: cloudflared-cert
+    create: true

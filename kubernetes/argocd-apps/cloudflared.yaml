@@ -1,0 +1,53 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudflared
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  sources:
+    - repoURL: https://community-charts.github.io/helm-charts
+      chart: cloudflared
+      targetRevision: 2.2.12
+      helm:
+        releaseName: cloudflared
+        valuesObject:
+          replica:
+            allNodes: true
+          tunnelConfig:
+            name: "141790c7-b609-49c9-849f-dacc38b5197f"
+            protocol: auto
+          tunnelSecrets:
+            existingPemFileSecret:
+              name: cloudflared-cert
+              key: cert.pem
+            existingConfigJsonFileSecret:
+              name: cloudflared-credentials
+              key: credentials.json
+          ingress:
+            - hostname: "*.homelab0.xyz"
+              service: http://cilium-gateway-gateway-public.gateway.svc.cluster.local:80
+            - service: http_status:404
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+    - repoURL: https://github.com/homelabzero/homelab-core
+      targetRevision: HEAD
+      path: kubernetes/cloudflared
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cloudflared
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true
+  revisionHistoryLimit: 3

@@ -32,6 +32,7 @@ spec:
             cm:
               url: https://argocd.internal.homelab0.xyz
               admin.enabled: "false"
+              webhook.github.secret: $argocd-webhook:webhook-secret
               oidc.config: |
                 name: Authentik
                 issuer: https://authentik.internal.homelab0.xyz/application/o/argocd/

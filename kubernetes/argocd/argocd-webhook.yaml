@@ -1,0 +1,16 @@
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: argocd-webhook
+  namespace: argocd
+spec:
+  vaultAuthRef: vault/default
+  mount: secret
+  path: core/argocd-webhook
+  type: kv-v2
+  refreshAfter: 1h
+  destination:
+    name: argocd-webhook
+    create: true
+    labels:
+      app.kubernetes.io/part-of: argocd

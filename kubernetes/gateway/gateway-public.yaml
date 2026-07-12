@@ -1,28 +1,15 @@
-# apiVersion: gateway.networking.k8s.io/v1
-# kind: Gateway
-# metadata:
-#   name: gateway-public
-#   namespace: gateway
-# spec:
-#   gatewayClassName: cilium
-#   addresses:
-#     - type: IPAddress
-#       value: "148.251.156.11"
-#   listeners:
-#     - name: http
-#       protocol: HTTP
-#       port: 80
-#       allowedRoutes:
-#         namespaces:
-#           from: All
-#     - name: https
-#       protocol: HTTPS
-#       port: 443
-#       hostname: "*.homelab0.xyz"
-#       tls:
-#         mode: Terminate
-#         certificateRefs:
-#           - name: wildcard-public
-#       allowedRoutes:
-#         namespaces:
-#           from: All
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: gateway-public
+  namespace: gateway
+spec:
+  gatewayClassName: cilium
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      hostname: "*.homelab0.xyz"
+      allowedRoutes:
+        namespaces:
+          from: All

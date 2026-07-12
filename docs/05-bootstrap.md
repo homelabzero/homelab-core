@@ -168,9 +168,20 @@ vault kv put secret/core/authentik-github-oauth \
 # Argo CD OIDC client secret — value comes from Authentik (step 5), seed empty now
 vault kv put secret/core/argocd-oidc clientSecret=""
 
+# Argo CD GitHub webhook HMAC secret — verifies the public /api/webhook endpoint.
+# Set the SAME value as the secret on the GitHub webhook (repo/org → Webhooks).
+vault kv put secret/core/argocd-webhook webhook-secret="$(openssl rand -hex 32)"
+
 # Vault's own OIDC client secret (Vault is the OIDC client, Authentik the IdP).
 # Generate it here and reuse the SAME value in auth/oidc/config (step 7).
 vault kv put secret/core/vault-oidc clientSecret="$(openssl rand -base64 48)"
+
+# Cloudflare Tunnel — the origin cert + tunnel credentials produced by
+# `cloudflared tunnel create` (see step 9). Keys MUST be cert.pem /
+# credentials.json (VSO copies key names verbatim). Safe to seed later: the
+# cloudflared app just stays Progressing until these exist, like any other.
+vault kv put secret/core/cloudflared-cert        cert.pem=@$HOME/.cloudflared/cert.pem
+vault kv put secret/core/cloudflared-credentials credentials.json=@$HOME/.cloudflared/<TUNNEL_UUID>.json
 ```
 
 > **Note — paths/keys must match the VaultStaticSecret manifests.** VSO reads
@@ -184,7 +195,10 @@ vault kv put secret/core/vault-oidc clientSecret="$(openssl rand -base64 48)"
 > | `core/authentik-secret-key` | `secret-key` | `authentik-secret-key` (`authentik`) | `kubernetes/authentik/secret-key.yaml` |
 > | `core/authentik-github-oauth` | `client-id`, `client-secret` | `authentik-github-oauth` (`authentik`) | `kubernetes/authentik/github-oauth.yaml` |
 > | `core/argocd-oidc` | `clientSecret` | `argocd-oidc` (`argocd`) | `kubernetes/argocd/argocd-oidc.yaml` |
+> | `core/argocd-webhook` | `webhook-secret` | `argocd-webhook` (`argocd`) | `kubernetes/argocd/argocd-webhook.yaml` (labeled `part-of: argocd`; argocd-cm reads it as `$argocd-webhook:webhook-secret`) |
 > | `core/vault-oidc` | `clientSecret` | `vault-oidc` (`authentik`) | `kubernetes/authentik/vault-oidc.yaml` (consumed by Authentik as `VAULT_OIDC_CLIENT_SECRET`; the same value is set in Vault's `auth/oidc/config`) |
+> | `core/cloudflared-cert` | `cert.pem` | `cloudflared-cert` (`cloudflared`) | `kubernetes/cloudflared/cert.yaml` |
+> | `core/cloudflared-credentials` | `credentials.json` | `cloudflared-credentials` (`cloudflared`) | `kubernetes/cloudflared/credentials.yaml` |
 
 ## 4. Let GitOps finish
 
@@ -306,6 +320,54 @@ OIDC via Authentik is now the only way a human logs in.
 > `vault operator generate-root -init`, then `vault operator generate-root` with
 > your unseal key (and the OTP) to recover a one-time root token. Keep the unseal
 > key safe — it is the only recovery path.
+
+## 9. Public access via Cloudflare Tunnel (cloudflared)
+
+NetBird is the private path (`*.internal.homelab0.xyz` → `gateway-internal`).
+For anything that must be reachable from the public internet, the `cloudflared`
+app runs an **outbound-only** Cloudflare Tunnel — no inbound ports open on the
+node, the public IP is never advertised. Cloudflare terminates TLS at its edge
+and forwards plain HTTP over the tunnel to the HTTP-only `gateway-public`; the
+Gateway + its HTTPRoutes do host/path routing and are the actual public gate.
+
+**Make a service public** = attach an HTTPRoute with `parentRef: gateway-public`
+(mirrors the internal gateway) **and** add a proxied DNS record for its hostname.
+Nothing in the cloudflared config changes. First route shipped: Argo CD's
+`/api/webhook` on `argocd.homelab0.xyz` (all other Argo CD paths stay internal).
+
+The tunnel identity is created once, by hand (like the Vault auth methods):
+
+```bash
+brew install cloudflared
+
+# Browser auth for the homelab0.xyz zone → writes ~/.cloudflared/cert.pem
+cloudflared tunnel login
+
+# Create the tunnel → writes ~/.cloudflared/<TUNNEL_UUID>.json (credentials)
+cloudflared tunnel create homelab
+
+# Put the printed UUID into kubernetes/argocd-apps/cloudflared.yaml
+#   tunnelConfig.name: "<TUNNEL_UUID>"     (the UUID is not a secret)
+# and seed cert.pem + credentials.json into Vault (step 3's last two commands).
+
+# Point each public hostname at the tunnel (proxied CNAME -> <UUID>.cfargotunnel.com).
+# CLI (uses cert.pem), or do it by hand in the Cloudflare dashboard:
+cloudflared tunnel route dns homelab argocd.homelab0.xyz
+```
+
+Once the UUID is committed and Vault holds the two secrets, VSO materializes
+`cloudflared-cert` / `cloudflared-credentials`, the DaemonSet goes Ready, and
+the tunnel's four edge connections come up. Verify:
+
+```bash
+kubectl -n cloudflared logs -l app=cloudflared --tail=20   # "Registered tunnel connection" x4
+curl -I https://argocd.homelab0.xyz/api/webhook            # reaches Argo CD (405/400 = wired, not 5xx)
+```
+
+> **Origin cert scope.** `cert.pem` is the account-level Cloudflare cert; the
+> pod only needs `credentials.json` at runtime but the chart mounts both. Keep
+> `cert.pem` in Vault (never Git). Scope the API token used for `login` to the
+> `homelab0.xyz` zone.
 
 ## Notes
 
