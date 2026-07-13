@@ -24,6 +24,17 @@ laptops, nothing to store in Vault); username claim **`preferred_username`** and
 groups both prefixed **`oidc:`** so an OIDC token can never impersonate a built-in
 user or claim `system:masters`.
 
+> **`machine.files` must live under `/var`.** Talos's `WriteUserFiles` boot task
+> hard-fails on `op: create` for any path outside `/var`:
+> `"create operation not allowed outside of /var"`. That error **aborts the whole
+> boot sequence** — `cri`/`kubelet`/`etcd` never start, and because `ext-netbird`
+> waits on `cri`, NetBird never comes up either, leaving the node reachable only
+> on its public IP. There is **no apply-time validation** for this, so
+> `topf render`/`apply` accept it happily and the node then reboot-loops.
+> Hence: write the file to `/var/lib/kubernetes/…` and bind it into the apiserver
+> static pod with `extraVolumes` (the `mountPath` is inside the pod, so it can
+> still be `/etc/kubernetes/…`).
+
 ## Apply order
 
 The GitOps parts (Authentik + RBAC) are risk-free and go first; the apiserver
@@ -67,38 +78,42 @@ kube-apiserver, so you always retain node access to recover.
 
 ### 3. Client kubeconfig (kubelogin)
 
+`kubectl oidc-login` comes from int128's **kubelogin** — the tap matters, since a
+plain `brew install kubelogin` gets Azure's unrelated tool of the same name:
+
 ```bash
-brew install int128/kubelogin/kubelogin      # provides `kubectl oidc-login`
+brew tap int128/kubelogin
+brew install kubelogin
 ```
 
-Test the login flow (opens a browser to Authentik):
+Test the login flow (opens a browser to Authentik → GitHub):
 
 ```bash
 kubectl oidc-login setup \
   --oidc-issuer-url=https://authentik.internal.homelab0.xyz/application/o/kubernetes/ \
   --oidc-client-id=kubernetes \
-  --oidc-use-pkce \
+  --oidc-pkce-method=S256 \
   --oidc-extra-scope=profile --oidc-extra-scope=email --oidc-extra-scope=groups
 ```
 
-The output should show your `preferred_username` and a `groups` claim containing
-`authentik Admins`. Then wire it into the kubeconfig as a new context reusing the
-existing cluster (CA + server) from `~/.kube/homelab.kubeconfig`:
+Expect `preferred_username` plus a `groups` claim containing `authentik Admins`.
+Then add an `oidc` user and a context on the existing `homelab` cluster:
 
 ```bash
 kubectl config set-credentials oidc \
   --exec-api-version=client.authentication.k8s.io/v1 \
+  --exec-interactive-mode=Never \
   --exec-command=kubectl \
-  --exec-arg=oidc-login,get-token \
-  --exec-arg=--oidc-issuer-url=https://authentik.internal.homelab0.xyz/application/o/kubernetes/ \
-  --exec-arg=--oidc-client-id=kubernetes \
-  --exec-arg=--oidc-use-pkce \
-  --exec-arg=--oidc-extra-scope=profile \
-  --exec-arg=--oidc-extra-scope=email \
-  --exec-arg=--oidc-extra-scope=groups
+  --exec-arg=oidc-login \
+  --exec-arg=get-token \
+  --exec-arg="--oidc-issuer-url=https://authentik.internal.homelab0.xyz/application/o/kubernetes/" \
+  --exec-arg="--oidc-client-id=kubernetes" \
+  --exec-arg="--oidc-pkce-method=S256" \
+  --exec-arg="--oidc-extra-scope=profile" \
+  --exec-arg="--oidc-extra-scope=email" \
+  --exec-arg="--oidc-extra-scope=groups"
 
-kubectl config set-context homelab-sso \
-  --cluster=<cluster-name-from-homelab.kubeconfig> --user=oidc
+kubectl config set-context homelab-sso --cluster=homelab --user=oidc
 
 kubectl --context homelab-sso get nodes    # first call opens the browser
 ```
@@ -112,6 +127,10 @@ kubectl --context homelab-sso get nodes    # first call opens the browser
 kubectl --context homelab-sso auth whoami          # oidc:<user>, groups oidc:authentik Admins
 kubectl --context homelab-sso auth can-i '*' '*'   # yes (cluster-admin via the group)
 ```
+
+> **Vault re-seals on every reboot.** Applying the apiserver change requires a
+> reboot (`machine.files` are only written by the boot sequence), so afterwards
+> `vault operator unseal` again — see `05-bootstrap.md`.
 
 ## Break-glass
 
