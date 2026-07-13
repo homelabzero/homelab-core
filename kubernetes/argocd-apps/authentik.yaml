@@ -29,6 +29,7 @@ spec:
               - authentik-blueprints
               - authentik-blueprints-argocd
               - authentik-blueprints-vault
+              - authentik-blueprints-kubernetes
               - authentik-blueprints-login
               - authentik-blueprints-github-binding
           global:

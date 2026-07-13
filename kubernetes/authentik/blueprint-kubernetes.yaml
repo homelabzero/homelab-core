@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-blueprints-kubernetes
+data:
+  kubernetes-provider.yaml: |
+    version: 1
+    metadata:
+      name: kubernetes-oidc-provider
+    entries:
+      - model: authentik_providers_oauth2.scopemapping
+        state: present
+        identifiers:
+          name: "OAuth Mapping: Kubernetes groups"
+        id: kubernetes-groups-scope
+        attrs:
+          scope_name: groups
+          description: "Kubernetes groups"
+          expression: |
+            return [group.name for group in request.user.ak_groups.all()]
+
+      - model: authentik_providers_oauth2.oauth2provider
+        state: present
+        identifiers:
+          name: kubernetes
+        id: kubernetes-provider
+        attrs:
+          name: kubernetes
+          client_type: public
+          client_id: kubernetes
+          grant_types:
+            - authorization_code
+            - refresh_token
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
+          redirect_uris:
+            - matching_mode: strict
+              url: http://localhost:8000
+            - matching_mode: strict
+              url: http://127.0.0.1:8000
+            - matching_mode: strict
+              url: http://localhost:18000
+            - matching_mode: strict
+              url: http://127.0.0.1:18000
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
+            - !KeyOf kubernetes-groups-scope
+
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: kubernetes
+        id: kubernetes-app
+        attrs:
+          name: Kubernetes
+          slug: kubernetes
+          provider: !KeyOf kubernetes-provider
