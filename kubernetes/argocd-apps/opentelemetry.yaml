@@ -19,6 +19,8 @@ spec:
           crds:
             create: true
           manager:
+            collectorImage:
+              repository: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib
             resources:
               requests:
                 cpu: 50m
