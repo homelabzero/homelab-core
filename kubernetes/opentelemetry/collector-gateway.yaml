@@ -57,11 +57,11 @@ spec:
         spike_limit_percentage: 25
       batch: {}
     exporters:
-      otlphttp:
-        endpoint: http://vmsingle-vm.monitoring.svc:8428/opentelemetry
+      prometheusremotewrite:
+        endpoint: http://vmsingle-vm.monitoring.svc:8428/api/v1/write
     service:
       pipelines:
         metrics:
           receivers: [otlp, prometheus]
           processors: [memory_limiter, batch]
-          exporters: [otlphttp]
+          exporters: [prometheusremotewrite]
