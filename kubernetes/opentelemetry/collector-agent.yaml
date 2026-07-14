@@ -87,6 +87,7 @@ spec:
           - /var/log/pods/*/*/*.log
         exclude:
           - /var/log/pods/monitoring_otel-agent*/*/*.log
+        include_file_path: true
         start_at: beginning
         storage: file_storage
         operators:
