@@ -1,0 +1,21 @@
+apiVersion: operator.victoriametrics.com/v1
+kind: VLSingle
+metadata:
+  name: vl
+  namespace: monitoring
+spec:
+  retentionPeriod: 14d
+  port: "9428"
+  storage:
+    storageClassName: openebs-hostpath
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 10Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 512Mi

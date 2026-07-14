@@ -87,10 +87,35 @@ Design decisions:
 - OTel SDK: point OTLP at
   `http://otel-gateway-collector.monitoring.svc:4318` (http) or `:4317` (gRPC).
 
+## Logs (VictoriaLogs)
+
+The `victoria-logs` app (wave 5) deploys a `VLSingle` CR — same VM Operator,
+14d retention, 10Gi on `openebs-hostpath`, service
+`vlsingle-vl.monitoring.svc:9428`. Collection is the existing `otel-agent`:
+
+- `filelog` receiver tails `/var/log/pods/*/*/*.log` (hostPath, read-only); the
+  `container` operator parses the containerd format and extracts
+  `k8s.namespace.name` / `k8s.pod.name` / `k8s.container.name` from the path.
+- The agent runs as root (`runAsUser: 0`) to read pod logs, and checkpoints
+  file offsets in the `file_storage` extension under `/var/lib/otel-agent`
+  (hostPath) so restarts neither lose nor duplicate logs.
+- `groupbyattrs` promotes the three k8s attributes to resource attributes;
+  VictoriaLogs treats resource attributes as **stream fields**, and the
+  `VL-Stream-Fields` header pins exactly those three (Loki-label-like, low
+  cardinality). Export goes to `/insert/opentelemetry/v1/logs` via `otlphttp`.
+- The agent's own pod logs are excluded to avoid a self-feedback loop.
+
+Grafana queries it through the `victoriametrics-logs-datasource` plugin
+(installed by the operator from the `GrafanaDatasource` CR, LogsQL in Explore).
+
+Metric names note: scraped metrics are exported with `prometheusremotewrite`
+(not OTLP) — VM's OTLP ingestion stores resource attributes as dotted labels
+(`service.name` instead of `job`), which breaks community dashboards. Remote
+write preserves exact Prometheus semantics. OTLP stays the path for
+SDK-instrumented apps via the gateway.
+
 ## Later phases
 
-- **Logs** — VictoriaLogs (`vm/victoria-logs-single`) + `filelog` receiver on
-  `otel-agent` → `/insert/opentelemetry/v1/logs`.
 - **Traces** — VictoriaTraces + `otlp` receiver already in place on the gateway;
   add the exporter + Grafana Jaeger datasource when an app emits spans.
 - **Alerting** — VMAlert + VMAlertmanager via the VM Operator (`VMRule` CRs).
