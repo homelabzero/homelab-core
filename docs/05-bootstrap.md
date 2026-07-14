@@ -176,6 +176,10 @@ vault kv put secret/core/argocd-webhook webhook-secret="$(openssl rand -hex 32)"
 # Generate it here and reuse the SAME value in auth/oidc/config (step 7).
 vault kv put secret/core/vault-oidc clientSecret="$(openssl rand -base64 48)"
 
+# Grafana OIDC client secret — consumed by both Authentik (provider side) and
+# Grafana (client side) via VSO, so a single generated value wires both.
+vault kv put secret/core/grafana-oidc clientSecret="$(openssl rand -base64 48)"
+
 # Cloudflare Tunnel — the origin cert + tunnel credentials produced by
 # `cloudflared tunnel create` (see step 9). Keys MUST be cert.pem /
 # credentials.json (VSO copies key names verbatim). Safe to seed later: the
@@ -197,6 +201,7 @@ vault kv put secret/core/cloudflared-credentials credentials.json=@$HOME/.cloudf
 > | `core/argocd-oidc` | `clientSecret` | `argocd-oidc` (`argocd`) | `kubernetes/argocd/argocd-oidc.yaml` |
 > | `core/argocd-webhook` | `webhook-secret` | `argocd-webhook` (`argocd`) | `kubernetes/argocd/argocd-webhook.yaml` (labeled `part-of: argocd`; argocd-cm reads it as `$argocd-webhook:webhook-secret`) |
 > | `core/vault-oidc` | `clientSecret` | `vault-oidc` (`authentik`) | `kubernetes/authentik/vault-oidc.yaml` (consumed by Authentik as `VAULT_OIDC_CLIENT_SECRET`; the same value is set in Vault's `auth/oidc/config`) |
+> | `core/grafana-oidc` | `clientSecret` | `grafana-oidc` (`authentik`, `monitoring`) | `kubernetes/authentik/grafana-oidc.yaml` + `kubernetes/grafana/grafana-oidc.yaml` (Authentik reads it as `GRAFANA_OIDC_CLIENT_SECRET`; Grafana as `GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET`) |
 > | `core/cloudflared-cert` | `cert.pem` | `cloudflared-cert` (`cloudflared`) | `kubernetes/cloudflared/cert.yaml` |
 > | `core/cloudflared-credentials` | `credentials.json` | `cloudflared-credentials` (`cloudflared`) | `kubernetes/cloudflared/credentials.yaml` |
 

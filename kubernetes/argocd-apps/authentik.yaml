@@ -30,6 +30,7 @@ spec:
               - authentik-blueprints-argocd
               - authentik-blueprints-vault
               - authentik-blueprints-kubernetes
+              - authentik-blueprints-grafana
               - authentik-blueprints-login
               - authentik-blueprints-github-binding
           global:
@@ -73,6 +74,11 @@ spec:
                 valueFrom:
                   secretKeyRef:
                     name: vault-oidc
+                    key: clientSecret
+              - name: GRAFANA_OIDC_CLIENT_SECRET
+                valueFrom:
+                  secretKeyRef:
+                    name: grafana-oidc
                     key: clientSecret
           server:
             resources:

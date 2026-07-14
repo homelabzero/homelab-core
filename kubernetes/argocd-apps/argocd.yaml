@@ -50,6 +50,12 @@ spec:
               policy.default: ""
               policy.csv: |
                 g, authentik Admins, role:admin
+            repositories:
+              grafana-oci:
+                name: grafana-oci
+                url: ghcr.io/grafana/helm-charts
+                type: helm
+                enableOCI: "true"
     - repoURL: https://github.com/homelabzero/homelab-core
       targetRevision: HEAD
       path: kubernetes/argocd

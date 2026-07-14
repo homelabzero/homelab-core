@@ -1,0 +1,79 @@
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata:
+  name: otel-agent
+  namespace: monitoring
+spec:
+  mode: daemonset
+  serviceAccount: otel-collector
+  env:
+    - name: K8S_NODE_NAME
+      valueFrom:
+        fieldRef:
+          fieldPath: spec.nodeName
+    - name: K8S_NODE_IP
+      valueFrom:
+        fieldRef:
+          fieldPath: status.hostIP
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+  config:
+    receivers:
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: kubelet
+              scheme: https
+              tls_config:
+                insecure_skip_verify: true
+              authorization:
+                credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              static_configs:
+                - targets:
+                    - ${env:K8S_NODE_IP}:10250
+              relabel_configs:
+                - target_label: instance
+                  replacement: ${env:K8S_NODE_NAME}
+                - target_label: node
+                  replacement: ${env:K8S_NODE_NAME}
+            - job_name: cadvisor
+              scheme: https
+              metrics_path: /metrics/cadvisor
+              tls_config:
+                insecure_skip_verify: true
+              authorization:
+                credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              static_configs:
+                - targets:
+                    - ${env:K8S_NODE_IP}:10250
+              relabel_configs:
+                - target_label: instance
+                  replacement: ${env:K8S_NODE_NAME}
+                - target_label: node
+                  replacement: ${env:K8S_NODE_NAME}
+            - job_name: node-exporter
+              static_configs:
+                - targets:
+                    - ${env:K8S_NODE_IP}:9100
+              relabel_configs:
+                - target_label: instance
+                  replacement: ${env:K8S_NODE_NAME}
+    processors:
+      memory_limiter:
+        check_interval: 5s
+        limit_percentage: 80
+        spike_limit_percentage: 25
+      batch: {}
+    exporters:
+      otlphttp:
+        endpoint: http://vmsingle-vm.monitoring.svc:8428/opentelemetry
+    service:
+      pipelines:
+        metrics:
+          receivers: [prometheus]
+          processors: [memory_limiter, batch]
+          exporters: [otlphttp]

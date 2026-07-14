@@ -1,0 +1,43 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: Grafana
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    dashboards: grafana
+spec:
+  config:
+    server:
+      root_url: https://grafana.internal.homelab0.xyz
+    analytics:
+      reporting_enabled: "false"
+      check_for_updates: "false"
+    auth.generic_oauth:
+      enabled: "true"
+      name: Authentik
+      client_id: grafana
+      scopes: openid profile email groups
+      auth_url: https://authentik.internal.homelab0.xyz/application/o/authorize/
+      token_url: https://authentik.internal.homelab0.xyz/application/o/token/
+      api_url: https://authentik.internal.homelab0.xyz/application/o/userinfo/
+      role_attribute_path: contains(groups[*], 'authentik Admins') && 'GrafanaAdmin' || 'Viewer'
+      allow_assign_grafana_admin: "true"
+      use_pkce: "true"
+  deployment:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: grafana
+              env:
+                - name: GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: grafana-oidc
+                      key: clientSecret
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 128Mi
+                limits:
+                  memory: 256Mi

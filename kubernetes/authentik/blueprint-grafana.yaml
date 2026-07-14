@@ -1,0 +1,55 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: authentik-blueprints-grafana
+data:
+  grafana-provider.yaml: |
+    version: 1
+    metadata:
+      name: grafana-oidc-provider
+    entries:
+      - model: authentik_providers_oauth2.scopemapping
+        state: present
+        identifiers:
+          name: "OAuth Mapping: Grafana groups"
+        id: grafana-groups-scope
+        attrs:
+          scope_name: groups
+          description: "Grafana groups"
+          expression: |
+            return [group.name for group in request.user.ak_groups.all()]
+
+      - model: authentik_providers_oauth2.oauth2provider
+        state: present
+        identifiers:
+          name: grafana
+        id: grafana-provider
+        attrs:
+          name: grafana
+          client_type: confidential
+          client_id: grafana
+          client_secret: !Env GRAFANA_OIDC_CLIENT_SECRET
+          grant_types:
+            - authorization_code
+            - refresh_token
+          authorization_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+          invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+          signing_key: !Find [authentik_crypto.certificatekeypair, [name, "authentik Self-signed Certificate"]]
+          redirect_uris:
+            - matching_mode: strict
+              url: https://grafana.internal.homelab0.xyz/login/generic_oauth
+          property_mappings:
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-openid]]
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-email]]
+            - !Find [authentik_providers_oauth2.scopemapping, [managed, goauthentik.io/providers/oauth2/scope-profile]]
+            - !KeyOf grafana-groups-scope
+
+      - model: authentik_core.application
+        state: present
+        identifiers:
+          slug: grafana
+        id: grafana-app
+        attrs:
+          name: Grafana
+          slug: grafana
+          provider: !KeyOf grafana-provider

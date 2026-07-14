@@ -1,0 +1,16 @@
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: grafana-oidc
+  namespace: authentik
+spec:
+  vaultAuthRef: vault/default
+  mount: secret
+  path: core/grafana-oidc
+  type: kv-v2
+  refreshAfter: 1h
+  destination:
+    name: grafana-oidc
+    create: true
+    transformation:
+      excludeRaw: true
