@@ -1,0 +1,26 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommitsDisabled"
+  ],
+  "timezone": "Europe/Kyiv",
+  "schedule": ["* 12 * * 0"],
+  "argocd": {
+    "managerFilePatterns": ["/kubernetes/argocd-apps/.+\\.ya?ml$/"]
+  },
+  "minimumReleaseAge": "3 days",
+  "packageRules": [
+    {
+      "matchManagers": ["argocd"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    },
+    {
+      "matchManagers": ["argocd"],
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "addLabels": ["major-update"]
+    }
+  ]
+}
