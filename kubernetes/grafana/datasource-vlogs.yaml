@@ -12,6 +12,7 @@ spec:
       version: 0.29.0
   datasource:
     name: VictoriaLogs
+    uid: victorialogs
     type: victoriametrics-logs-datasource
     access: proxy
     url: http://vlsingle-vl.monitoring.svc:9428

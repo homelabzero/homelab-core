@@ -1,0 +1,179 @@
+apiVersion: grafana.integreatly.org/v1beta1
+kind: GrafanaDashboard
+metadata:
+  name: kubernetes-logs
+  namespace: monitoring
+spec:
+  instanceSelector:
+    matchLabels:
+      dashboards: grafana
+  json: |
+    {
+      "title": "Kubernetes / Logs",
+      "uid": "k8s-logs",
+      "tags": ["logs", "victorialogs"],
+      "schemaVersion": 39,
+      "editable": true,
+      "time": { "from": "now-1h", "to": "now" },
+      "refresh": "30s",
+      "templating": {
+        "list": [
+          {
+            "name": "filters",
+            "label": "Filters",
+            "type": "adhoc",
+            "datasource": { "type": "victoriametrics-logs-datasource", "uid": "victorialogs" }
+          },
+          {
+            "name": "search",
+            "label": "Search",
+            "type": "textbox",
+            "query": "*",
+            "current": { "text": "*", "value": "*" },
+            "options": [{ "text": "*", "value": "*", "selected": true }]
+          }
+        ]
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Log volume by namespace",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "datasource": { "type": "victoriametrics-logs-datasource", "uid": "victorialogs" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "victoriametrics-logs-datasource", "uid": "victorialogs" },
+              "queryType": "statsRange",
+              "expr": "$search | stats by (k8s.namespace.name) count()",
+              "legendFormat": "{{k8s.namespace.name}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": { "drawStyle": "bars", "fillOpacity": 50, "stacking": { "mode": "normal" } },
+              "unit": "short"
+            },
+            "overrides": []
+          },
+          "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["sum"] } }
+        },
+        {
+          "id": 2,
+          "title": "Error volume by namespace",
+          "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "datasource": { "type": "victoriametrics-logs-datasource", "uid": "victorialogs" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "victoriametrics-logs-datasource", "uid": "victorialogs" },
+              "queryType": "statsRange",
+              "expr": "i(\"error\") OR i(\"fatal\") OR i(\"panic\") | stats by (k8s.namespace.name) count()",
+              "legendFormat": "{{k8s.namespace.name}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": { "drawStyle": "bars", "fillOpacity": 50, "stacking": { "mode": "normal" } },
+              "unit": "short",
+              "color": { "mode": "palette-classic" }
+            },
+            "overrides": []
+          },
+          "options": { "legend": { "displayMode": "table", "placement": "right", "calcs": ["sum"] } }
+        },
+        {
+          "id": 3,
+          "title": "Log volume by pod",
+          "type": "table",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+          "datasource": { "type": "victoriametrics-logs-datasource", "uid": "victorialogs" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "victoriametrics-logs-datasource", "uid": "victorialogs" },
+              "queryType": "stats",
+              "expr": "$search | stats by (k8s.pod.name) count() as logs"
+            }
+          ],
+          "transformations": [
+            { "id": "labelsToFields", "options": {} },
+            { "id": "merge", "options": {} },
+            { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true } } },
+            { "id": "sortBy", "options": { "sort": [{ "field": "Value", "desc": true }] } }
+          ],
+          "options": {}
+        },
+        {
+          "id": 4,
+          "title": "Error volume by pod",
+          "type": "table",
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+          "datasource": { "type": "victoriametrics-logs-datasource", "uid": "victorialogs" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "victoriametrics-logs-datasource", "uid": "victorialogs" },
+              "queryType": "stats",
+              "expr": "i(\"error\") OR i(\"fatal\") OR i(\"panic\") | stats by (k8s.pod.name) count() as errors"
+            }
+          ],
+          "transformations": [
+            { "id": "labelsToFields", "options": {} },
+            { "id": "merge", "options": {} },
+            { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true } } },
+            { "id": "sortBy", "options": { "sort": [{ "field": "Value", "desc": true }] } }
+          ],
+          "options": {}
+        },
+        {
+          "id": 5,
+          "title": "Log volume by container",
+          "type": "table",
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+          "datasource": { "type": "victoriametrics-logs-datasource", "uid": "victorialogs" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "victoriametrics-logs-datasource", "uid": "victorialogs" },
+              "queryType": "stats",
+              "expr": "$search | stats by (k8s.namespace.name, k8s.container.name) count() as logs"
+            }
+          ],
+          "transformations": [
+            { "id": "labelsToFields", "options": {} },
+            { "id": "merge", "options": {} },
+            { "id": "organize", "options": { "excludeByName": { "Time": true, "__name__": true } } },
+            { "id": "sortBy", "options": { "sort": [{ "field": "Value", "desc": true }] } }
+          ],
+          "options": {}
+        },
+        {
+          "id": 6,
+          "title": "Logs",
+          "type": "logs",
+          "gridPos": { "h": 16, "w": 24, "x": 0, "y": 16 },
+          "datasource": { "type": "victoriametrics-logs-datasource", "uid": "victorialogs" },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": { "type": "victoriametrics-logs-datasource", "uid": "victorialogs" },
+              "queryType": "instant",
+              "expr": "$search"
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "showCommonLabels": false,
+            "wrapLogMessage": true,
+            "prettifyLogMessage": false,
+            "enableLogDetails": true,
+            "dedupStrategy": "none",
+            "sortOrder": "Descending"
+          }
+        }
+      ]
+    }
