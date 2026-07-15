@@ -18,6 +18,8 @@ spec:
         valuesObject:
           global:
             domain: argocd.internal.homelab0.xyz
+            networkPolicy:
+              create: false
           notifications:
             enabled: false
           dex:
