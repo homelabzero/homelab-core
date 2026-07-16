@@ -6,6 +6,7 @@
   ],
   "timezone": "Europe/Kyiv",
   "schedule": ["* 12 * * 0"],
+  "enabledManagers": ["argocd"],
   "argocd": {
     "managerFilePatterns": ["/kubernetes/argocd-apps/.+\\.ya?ml$/"]
   },
