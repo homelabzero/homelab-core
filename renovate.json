@@ -9,7 +9,7 @@
   "argocd": {
     "managerFilePatterns": ["/kubernetes/argocd-apps/.+\\.ya?ml$/"]
   },
-  "minimumReleaseAge": "3 days",
+  "minimumReleaseAge": "1 day",
   "ignoreUnstable": true,
   "packageRules": [
     {
