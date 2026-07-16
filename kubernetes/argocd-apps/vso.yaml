@@ -12,7 +12,7 @@ spec:
   source:
     repoURL: https://helm.releases.hashicorp.com
     chart: vault-secrets-operator
-    targetRevision: 1.4.0
+    targetRevision: 1.4.1
     helm:
       releaseName: vault-secrets-operator
       valuesObject:
