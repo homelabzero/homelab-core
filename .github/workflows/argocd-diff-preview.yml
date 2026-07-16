@@ -12,14 +12,29 @@ jobs:
       contents: read
       pull-requests: write
     steps:
+      - name: Detect argocd-apps changes
+        id: changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          files=$(gh pr view ${{ github.event.number }} --repo ${{ github.repository }} --json files --jq '.files[].path' 2>/dev/null || echo FETCH_FAILED)
+          if [ "$files" = FETCH_FAILED ] || printf '%s\n' "$files" | grep -q '^kubernetes/argocd-apps/'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No kubernetes/argocd-apps/ changes in this PR — skipping render."
+          fi
       - uses: actions/checkout@v7
+        if: steps.changes.outputs.run == 'true'
         with:
           path: pull-request
       - uses: actions/checkout@v7
+        if: steps.changes.outputs.run == 'true'
         with:
           ref: main
           path: main
       - name: Generate diff
+        if: steps.changes.outputs.run == 'true'
         run: |
           docker run \
             --network=host \
@@ -33,6 +48,7 @@ jobs:
             -e TIMEOUT=300 \
             dagandersen/argocd-diff-preview:v0.2.11
       - name: Post diff as comment
+        if: steps.changes.outputs.run == 'true'
         run: |
           gh pr comment ${{ github.event.number }} --repo ${{ github.repository }} --body-file output/diff.md --edit-last || \
           gh pr comment ${{ github.event.number }} --repo ${{ github.repository }} --body-file output/diff.md
