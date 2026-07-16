@@ -11,8 +11,6 @@
   },
   "minimumReleaseAge": "3 days",
   "ignoreUnstable": true,
-  "ignoreTests": true,
-  "platformAutomerge": false,
   "packageRules": [
     {
       "matchManagers": ["argocd"],
