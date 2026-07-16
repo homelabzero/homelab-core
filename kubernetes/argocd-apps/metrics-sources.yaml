@@ -24,7 +24,7 @@ spec:
               memory: 128Mi
     - repoURL: https://prometheus-community.github.io/helm-charts
       chart: prometheus-node-exporter
-      targetRevision: 4.56.0
+      targetRevision: 4.56.1
       helm:
         releaseName: node-exporter
         valuesObject:
