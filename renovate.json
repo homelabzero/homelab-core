@@ -9,7 +9,7 @@
   "argocd": {
     "managerFilePatterns": ["/kubernetes/argocd-apps/.+\\.ya?ml$/"]
   },
-  "minimumReleaseAge": "1 day",
+  "minimumReleaseAge": "3 days",
   "ignoreUnstable": true,
   "packageRules": [
     {
@@ -22,6 +22,11 @@
       "matchUpdateTypes": ["major"],
       "automerge": false,
       "addLabels": ["major-update"]
+    },
+    {
+      "matchDepNames": ["https://github.com/kubernetes-sigs/gateway-api"],
+      "allowedVersions": "<1.5",
+      "description": "Cilium 1.19 supports Gateway API v1.4.x only (TLSRoute v1alpha2); do not float ahead of cilium"
     }
   ]
 }
