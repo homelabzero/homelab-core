@@ -2,233 +2,52 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project Overview
+Homelab Kubernetes on **Talos Linux** — one Hetzner dedicated server (combined CP+worker, scales 1→3), Cilium CNI (no kube-proxy), laptop access **only via NetBird** (`*.netbird.cloud`). Two layers:
 
-Personal homelab Kubernetes cluster — **Talos Linux** on **one Hetzner Robot dedicated server** acting as a combined control plane + worker. Designed to scale 1 → 3 dedicated nodes for HA later. Cilium is the CNI (replaces kube-proxy, transparent WireGuard node encryption). Laptop access is via the **NetBird** Talos system extension (NetBird Cloud free tier). Everything is provisioned by **OpenTofu** end-to-end.
+- **`talos/`** — node config, rendered by [`topf`](https://postfinance.github.io/topf/) + SOPS/age. Patches layer `all/` → role → `node/<host>/`; `*.sops.yaml` are encrypted (committed for DR), `*.yaml.tpl` are Go-templated — a file is one or the other. `output/` is gitignored (contains secrets).
+- **`kubernetes/`** — Argo CD **app-of-apps**: `app-of-apps.yaml` is the root; `argocd-apps/*.yaml` is one `Application` per component (Helm values inline, optional second source → `kubernetes/<component>/` for raw manifests). All apps prune+selfHeal: **the cluster is a pure function of git — edit manifests, never `kubectl edit` live objects.** Push to `main` = deploy.
 
-## Required Tools (macOS)
+`archive/` is the dead OpenTofu/Proxmox setup (gitignored) — ignore any `tofu`/`hcloud` references. Numbered guides in `docs/` cover bring-up; read them before non-trivial cluster changes.
 
-```bash
-brew install talosctl kubectl helm cilium-cli opentofu
-# NetBird CLI for the laptop:
-brew install netbirdio/tap/netbird
-```
-
-## Architecture
-
-- **Single dedicated node** (Hetzner Robot) acting as combined CP+worker. Talos machine config sets `cluster.allowSchedulingOnControlPlanes: true` so workloads land here.
-- **No Hetzner Cloud resources** — no `hcloud_*` provider, no private network, no vSwitch coupling. Cluster node has only its public IP; node-to-node would use Cilium WG node encryption once the cluster scales to 3.
-- **Talos Image Factory** — installer + metal images are built from a schematic that bakes the `siderolabs/netbird` system extension into the image. Schematic ID lives in `terraform.tfvars` as `talos_image_schematic_id`.
-- **NetBird** is the only laptop access path. Each node runs the NetBird extension service, enrolled via a setup key (NetBird Cloud, configured at app.netbird.io). No host-level WireGuard, no `wg0` interface, no laptop wg conf generation.
-- **kube-proxy** is disabled in Talos; **Cilium** replaces it. **KubePrism** is explicitly enabled on every node (kubelet → `localhost:7445` → apiservers). Designed for HA — single-node it's a no-op.
-- **Cluster endpoint**: NetBird peer DNS (e.g. `talos-1.netbird.cloud`). Resolves only when the NetBird agent is up on the client; no public DNS record for the apiserver. Set via `api_hostname` in `terraform.tfvars`. Scaling to 3 nodes needs either picking one peer name or a NetBird custom DNS group.
-- **Cilium**: tunnel mode (vxlan), Hubble + Hubble UI, Gateway API CRDs. With 1 node, encryption is a no-op; turn on `encryption.nodeEncryption` when scaling to 3.
-- **cert-manager**: Let's Encrypt via Cloudflare DNS-01 (staging + prod ClusterIssuers). Wildcard cert for `*.internal.homelab0.xyz`.
-- **external-dns**: Cloudflare provider, scoped to `internal.homelab0.xyz`. DNS-only records (not proxied).
-
-## Repository Structure
-
-```
-opentofu/
-  infrastructure/   # Root module — wires everything; this is what you `tofu apply`
-  modules/
-    talos/          # Machine config (incl. NetBird ExtensionServiceConfig), bootstrap, kubeconfig output
-archive/            # LEGACY: old Proxmox/Ansible/Hetzner-Cloud setup. Gitignored; kept locally only.
-docs/               # See 01-laptop-setup.md for current laptop bring-up.
-```
-
-## Bringing the cluster up from scratch
+## Working on it
 
 ```bash
-# One-time prep:
-# 1. Fill in opentofu/infrastructure/secrets.tfvars:
-#    - netbird_setup_key   — generate at app.netbird.io → Setup Keys (reusable).
-#    - cloudflare_api_token — Zone:DNS:Edit on the homelab zone.
-# 2. Boot the dedicated server into Hetzner rescue, dd the matching metal
-#    image onto disk, reboot. Get the metal image URL via:
-#
-#      ID=$(curl -sS -X POST -H "Content-Type: application/yaml" \
-#        --data-binary @- https://factory.talos.dev/schematics <<'EOF' | jq -r .id
-#      customization:
-#        systemExtensions:
-#          officialExtensions:
-#            - siderolabs/netbird
-#      EOF
-#      )
-#      VER=$(awk -F'"' '/^talos_version/ {print $2}' opentofu/infrastructure/terraform.tfvars)
-#      echo "https://factory.talos.dev/image/$ID/v$VER/metal-amd64.raw.xz"
-#
-#    (The Talos module computes this same ID at plan time for the installer
-#    image URL; this curl just gets it before any tofu run.)
-#    Server comes back in maintenance mode on its public IP, Talos API on 50000.
+export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt
+export KUBECONFIG=~/.kube/homelab.kubeconfig
 
-cd opentofu/infrastructure
-tofu init -backend-config=backend.hcl
-tofu apply -var-file=secrets.tfvars
-# tofu writes kubeconfig to ~/.kube/homelab.config and talosconfig to
-# ~/.talos/config directly (local_sensitive_file resources).
+cd talos && topf render               # validate node config (offline, safe)
+talosctl apply-config --file talos/output/talos-1.yaml  # day-2 config push (over NetBird; `topf apply` is first-provision only)
+sops talos/all/netbird.sops.yaml      # edit encrypted files in place
 
-# Bring NetBird up on the laptop (one-time enrolment), then talk to the cluster:
-netbird up --setup-key <YOUR_KEY>   # or use the GUI client
-KUBECONFIG=~/.kube/homelab.config kubectl get nodes
+kubectl -n argocd get applications    # sync/health of every component
 ```
 
-## Secrets & state
+**New component** = add `kubernetes/argocd-apps/<name>.yaml` with the right `sync-wave` (grep existing apps; shape: cilium 0 → storage 1 → db/vault/vso 2 → cert-manager 3 → platform 4 → UI/observability 5) + optional `kubernetes/<name>/` manifests. Needs a secret? Add a `VaultStaticSecret` + `vault-auth` SA in its namespace and seed the Vault path — the path↔manifest table is in `docs/05-bootstrap.md` step 3; keys must match verbatim.
 
-- `*.tfstate`, `.terraform/`, kubeconfigs, certs (`.pem`/`.key`/`.crt`), `secrets.tfvars`, and `archive/` are gitignored.
-- Externally-provided secrets all live in `secrets.tfvars` (gitignored): NetBird setup key, Cloudflare API token. Everything else (Talos PKI etc.) is generated by TF and lives in state. Treat the state file as sensitive.
-- State backend: S3-compatible Hetzner Object Storage (`backend.hcl` is gitignored).
+**CI**: PRs touching `argocd-apps/` get a rendered-manifest diff as a PR comment; Renovate auto-merges minor/patch chart bumps gated on that check.
 
-## Documentation Lookup
+## Architecture facts you can't grep
 
-When you need API docs, usage examples, or version-specific behavior for any third-party library or tool (Terraform/OpenTofu providers, Helm charts, Kubernetes APIs, Talos, Cilium, etc.), ALWAYS use the `get_docs` tool from the `context` MCP server FIRST.
+- **Secrets**: Vault (hand-unsealed, seals on every reboot) → VSO → K8s Secrets. VSO resolves the `vault-auth` SA in the *consuming* namespace. A sealed Vault stalls sync-wave 2 and gates all secret-consuming waves — that stall is intentional, not a bug.
+- **Exposure** is chosen by HTTPRoute `parentRef`: `gateway-internal` (`*.internal.homelab0.xyz`, VIP `10.60.0.1`, NetBird-only — the default) or `gateway-public` (`*.homelab0.xyz`, outbound-only Cloudflare Tunnel, no inbound ports). Public = HTTPRoute on `gateway-public` + proxied DNS record; tunnel config never changes.
+- **Identity**: Authentik is the sole IdP (GitHub org federated upstream) for Argo CD, Grafana, Vault, and the apiserver (JWT `AuthenticationConfiguration` in `talos/all/machine.yaml`). Providers live as blueprints in `kubernetes/authentik/`.
+- **Observability**: OTel collectors (`otel-agent` DaemonSet + `otel-gateway` Deployment) are the only collection layer → VictoriaMetrics/VictoriaLogs (VM Operator CRs) → stateless Grafana (dashboards/datasources are CRs). Grafana's "Prometheus" datasource pointing at VM is correct — VM is Prometheus-API-compatible. Scraped infra metrics export via `prometheusremotewrite`, not OTLP, to keep community-dashboard label semantics.
 
-Do not use WebFetch, WebSearch, or rely on training data for library docs.
-Only fall back to the web if `get_docs` returns no relevant results.
+## Gotchas
 
-Before writing code or configuration that uses a library or provider, query its docs via `context` to confirm the current API.
+- **Never commit or push without explicit in-the-moment approval.** Commit messages: brief, single-line, no trailers.
+- Both gateways forward **plain HTTP** to backends — apps must not force HTTPS redirects (Argo CD needs `server.insecure: true` under `configs.params`).
+- Gateway API is pinned `<1.5` in `renovate.json` — Cilium 1.19 supports v1.4.x only. Don't float it ahead of Cilium.
+- Talos `machine.files` with `op: create` only work under `/var` — anywhere else reboot-loops the node, with no apply-time validation.
+- `monitoring` namespace is PSA-privileged (via `managedNamespaceMetadata`) — node-exporter needs hostNetwork/hostPID.
+- After a node reset, delete the orphan NetBird peer at app.netbird.io, or the apiserver endpoint (`talos-1.netbird.cloud`) drifts to a suffixed name.
 
-## Security Notes
+## Tooling
 
-- Kubeconfig and all credential files (`.pem`, `.key`, `.crt`, `.env`) are gitignored
-- `secrets.tfvars` (NetBird setup key) is gitignored — never commit
-- Cluster nodes accept public traffic on Talos API (50000), kube-apiserver (6443), Cilium-required ports. NetBird is the laptop's access path, not the cluster's only firewall layer — apply Hetzner Robot firewall rules separately if needed.
+- **Docs lookup**: for any third-party API (Talos, Cilium, Helm charts, topf, VictoriaMetrics, Authentik, …) ALWAYS query `get_docs` on the `context` MCP server first; fall back to the web only if it returns nothing.
 
-<!-- rtk-instructions v2 -->
-# RTK (Rust Token Killer) - Token-Optimized Commands
+<!-- rtk-instructions -->
+## RTK
 
-## Golden Rule
-
-**Always prefix commands with `rtk`**. If RTK has a dedicated filter, it uses it. If not, it passes through unchanged. This means RTK is always safe to use.
-
-**Important**: Even in command chains with `&&`, use `rtk`:
-```bash
-# ❌ Wrong
-git add . && git commit -m "msg" && git push
-
-# ✅ Correct
-rtk git add . && rtk git commit -m "msg" && rtk git push
-```
-
-## RTK Commands by Workflow
-
-### Build & Compile (80-90% savings)
-```bash
-rtk cargo build         # Cargo build output
-rtk cargo check         # Cargo check output
-rtk cargo clippy        # Clippy warnings grouped by file (80%)
-rtk tsc                 # TypeScript errors grouped by file/code (83%)
-rtk lint                # ESLint/Biome violations grouped (84%)
-rtk prettier --check    # Files needing format only (70%)
-rtk next build          # Next.js build with route metrics (87%)
-```
-
-### Test (60-99% savings)
-```bash
-rtk cargo test          # Cargo test failures only (90%)
-rtk go test             # Go test failures only (90%)
-rtk jest                # Jest failures only (99.5%)
-rtk vitest              # Vitest failures only (99.5%)
-rtk playwright test     # Playwright failures only (94%)
-rtk pytest              # Python test failures only (90%)
-rtk rake test           # Ruby test failures only (90%)
-rtk rspec               # RSpec test failures only (60%)
-rtk test <cmd>          # Generic test wrapper - failures only
-```
-
-### Git (59-80% savings)
-```bash
-rtk git status          # Compact status
-rtk git log             # Compact log (works with all git flags)
-rtk git diff            # Compact diff (80%)
-rtk git show            # Compact show (80%)
-rtk git add             # Ultra-compact confirmations (59%)
-rtk git commit          # Ultra-compact confirmations (59%)
-rtk git push            # Ultra-compact confirmations
-rtk git pull            # Ultra-compact confirmations
-rtk git branch          # Compact branch list
-rtk git fetch           # Compact fetch
-rtk git stash           # Compact stash
-rtk git worktree        # Compact worktree
-```
-
-Note: Git passthrough works for ALL subcommands, even those not explicitly listed.
-
-### GitHub (26-87% savings)
-```bash
-rtk gh pr view <num>    # Compact PR view (87%)
-rtk gh pr checks        # Compact PR checks (79%)
-rtk gh run list         # Compact workflow runs (82%)
-rtk gh issue list       # Compact issue list (80%)
-rtk gh api              # Compact API responses (26%)
-```
-
-### JavaScript/TypeScript Tooling (70-90% savings)
-```bash
-rtk pnpm list           # Compact dependency tree (70%)
-rtk pnpm outdated       # Compact outdated packages (80%)
-rtk pnpm install        # Compact install output (90%)
-rtk npm run <script>    # Compact npm script output
-rtk npx <cmd>           # Compact npx command output
-rtk prisma              # Prisma without ASCII art (88%)
-```
-
-### Files & Search (60-75% savings)
-```bash
-rtk ls <path>           # Tree format, compact (65%)
-rtk read <file>         # Code reading with filtering (60%)
-rtk grep <pattern>      # Search grouped by file (75%)
-rtk find <pattern>      # Find grouped by directory (70%)
-```
-
-### Analysis & Debug (70-90% savings)
-```bash
-rtk err <cmd>           # Filter errors only from any command
-rtk log <file>          # Deduplicated logs with counts
-rtk json <file>         # JSON structure without values
-rtk deps                # Dependency overview
-rtk env                 # Environment variables compact
-rtk summary <cmd>       # Smart summary of command output
-rtk diff                # Ultra-compact diffs
-```
-
-### Infrastructure (85% savings)
-```bash
-rtk docker ps           # Compact container list
-rtk docker images       # Compact image list
-rtk docker logs <c>     # Deduplicated logs
-rtk kubectl get         # Compact resource list
-rtk kubectl logs        # Deduplicated pod logs
-```
-
-### Network (65-70% savings)
-```bash
-rtk curl <url>          # Compact HTTP responses (70%)
-rtk wget <url>          # Compact download output (65%)
-```
-
-### Meta Commands
-```bash
-rtk gain                # View token savings statistics
-rtk gain --history      # View command history with savings
-rtk discover            # Analyze Claude Code sessions for missed RTK usage
-rtk proxy <cmd>         # Run command without filtering (for debugging)
-rtk init                # Add RTK instructions to CLAUDE.md
-rtk init --global       # Add RTK to ~/.claude/CLAUDE.md
-```
-
-## Token Savings Overview
-
-| Category | Commands | Typical Savings |
-|----------|----------|-----------------|
-| Tests | vitest, playwright, cargo test | 90-99% |
-| Build | next, tsc, lint, prettier | 70-87% |
-| Git | status, log, diff, add, commit | 59-80% |
-| GitHub | gh pr, gh run, gh issue | 26-87% |
-| Package Managers | pnpm, npm, npx | 70-90% |
-| Files | ls, read, grep, find | 60-75% |
-| Infrastructure | docker, kubectl | 85% |
-| Network | curl, wget | 65-70% |
-
-Overall average: **60-90% token reduction** on common development operations.
+Prefix every shell command with `rtk` (`rtk git status`, `rtk kubectl get pods`, `rtk gh pr view`) — a token-filtering proxy that compacts output and passes unknown commands through unchanged, so it is always safe. Applies inside `&&` chains too. `rtk proxy <cmd>` runs unfiltered (debugging); `rtk gain` shows savings.
 <!-- /rtk-instructions -->
