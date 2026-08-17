@@ -37,7 +37,7 @@ kubectl -n argocd get applications    # sync/health of every component
 
 - **Never commit or push without explicit in-the-moment approval.** Commit messages: brief, single-line, no trailers.
 - Both gateways forward **plain HTTP** to backends — apps must not force HTTPS redirects (Argo CD needs `server.insecure: true` under `configs.params`).
-- Gateway API is pinned `<1.5` in `renovate.json` — Cilium 1.19 supports v1.4.x only. Don't float it ahead of Cilium.
+- Gateway API is pinned `<1.7` in `renovate.json` — Cilium 1.20 builds against v1.6.x. Bump the two **together**: Cilium's Gateway API controller silently refuses to start if the CRDs are older than it expects (Gateway/HTTPRoute statuses go stale rather than erroring), which stops TLS secret sync into `cilium-secrets` and makes every HTTPS route RST at the TLS handshake.
 - Talos `machine.files` with `op: create` only work under `/var` — anywhere else reboot-loops the node, with no apply-time validation.
 - `monitoring` namespace is PSA-privileged (via `managedNamespaceMetadata`) — node-exporter needs hostNetwork/hostPID.
 - After a node reset, delete the orphan NetBird peer at app.netbird.io, or the apiserver endpoint (`talos-1.netbird.cloud`) drifts to a suffixed name.

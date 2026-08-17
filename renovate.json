@@ -25,8 +25,8 @@
     },
     {
       "matchDepNames": ["https://github.com/kubernetes-sigs/gateway-api"],
-      "allowedVersions": "<1.5",
-      "description": "Cilium 1.19 supports Gateway API v1.4.x only (TLSRoute v1alpha2); do not float ahead of cilium"
+      "allowedVersions": "<1.7",
+      "description": "Cilium 1.20 builds against Gateway API v1.6.x (requires ReferenceGrant v1 and TLSRoute v1); do not float ahead of cilium"
     }
   ]
 }
