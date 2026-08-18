@@ -1,5 +1,5 @@
 clusterName: homelab
-talosVersion: 1.13.0
+talosVersion: 1.13.8
 kubernetesVersion: 1.36.1
 
 # NetBird peer DNS — resolves only on NetBird-connected clients.
