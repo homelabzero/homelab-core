@@ -15,7 +15,7 @@ image URL (`talos_version` from `talos/topf.yaml`):
 
 ```bash
 cd talos
-ID=$(topf schematicids)
+ID=$(topf schematic-ids)
 VER=$(awk '/^talosVersion:/ {print $2}' topf.yaml)
 echo "https://factory.talos.dev/image/$ID/v$VER/metal-amd64.raw.xz"
 ```
@@ -62,10 +62,20 @@ After install, record the node under `nodes` in `talos/topf.yaml`:
 
 ```yaml
 nodes:
-  - host: talos-1
-    ip: 148.251.156.11   # public IP — topf's connection target
+  - host: talos-2
+    ip: 136.243.147.253   # public IP — topf's connection target
     role: control-plane
+    data:
+      mac: "a8:a1:59:04:72:91"        # NIC hardware address
+      systemDiskSerial: "89SS10RCT0RM" # the disk you dd'd to
 ```
 
-The install disk (`/dev/nvme0n1`) and interface (`enp41s0`) are set in
-`talos/all/machine.yaml`; check them from rescue with `lsblk` / `ip link`.
+`data` feeds `talos/all/hardware.yaml.tpl`, which selects the NIC by MAC and
+the install disk by serial. Predictable NIC names (`enpXsY`) and NVMe order
+(`nvmeXn1`) both differ between chassis — and between the rescue kernel and
+Talos — so never hardcode them. Read the values from rescue:
+
+```bash
+ip -br link | grep -v lo                       # MAC
+lsblk -o NAME,SIZE,MODEL,SERIAL | grep nvme    # serial of the install target
+```

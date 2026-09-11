@@ -1,7 +1,5 @@
 # Machine + cluster config applied to every node.
 machine:
-  install:
-    disk: /dev/nvme0n1
   time:
     servers:
       - ntp1.hetzner.de
@@ -15,14 +13,6 @@ machine:
     nameservers:
       - 1.1.1.1
       - 8.8.8.8
-    interfaces:
-      - interface: enp41s0
-        dhcp: true
-    # Resolve the cluster endpoint locally so on-host controllers don't need NetBird DNS.
-    extraHostEntries:
-      - ip: 127.0.0.1
-        aliases:
-          - talos-1.netbird.cloud
   # OpenEBS Mayastor prerequisites.
   sysctls:
     vm.nr_hugepages: "1024"
@@ -66,6 +56,8 @@ machine:
                 prefix: "oidc:"
 # Cilium replaces kube-proxy + CNI; every node is a combined control-plane + worker.
 cluster:
+  discovery:
+    enabled: false
   network:
     cni:
       name: none

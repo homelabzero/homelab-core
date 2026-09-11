@@ -118,7 +118,7 @@ kubectl config set-context homelab-sso --cluster=homelab --user=oidc
 kubectl --context homelab-sso get nodes    # first call opens the browser
 ```
 
-> NetBird must be up: both the apiserver endpoint (`talos-1.netbird.cloud`) and
+> NetBird must be up: both the apiserver endpoint (`talos-2.netbird.cloud`) and
 > Authentik (`authentik.internal.homelab0.xyz`) resolve only over NetBird.
 
 ## Verify

@@ -16,7 +16,7 @@ export SOPS_AGE_KEY_FILE=~/.config/sops/age/keys.txt
 export KUBECONFIG=~/.kube/homelab.kubeconfig
 
 cd talos && topf render               # validate node config (offline, safe)
-talosctl apply-config --file talos/output/talos-1.yaml  # day-2 config push (over NetBird; `topf apply` is first-provision only)
+talosctl apply-config --file talos/output/talos-2.yaml  # day-2 config push (over NetBird; `topf apply` is first-provision only)
 sops talos/all/netbird.sops.yaml      # edit encrypted files in place
 
 kubectl -n argocd get applications    # sync/health of every component
@@ -40,7 +40,7 @@ kubectl -n argocd get applications    # sync/health of every component
 - Gateway API is pinned `<1.7` in `renovate.json` — Cilium 1.20 builds against v1.6.x. Bump the two **together**: Cilium's Gateway API controller silently refuses to start if the CRDs are older than it expects (Gateway/HTTPRoute statuses go stale rather than erroring), which stops TLS secret sync into `cilium-secrets` and makes every HTTPS route RST at the TLS handshake.
 - Talos `machine.files` with `op: create` only work under `/var` — anywhere else reboot-loops the node, with no apply-time validation.
 - `monitoring` namespace is PSA-privileged (via `managedNamespaceMetadata`) — node-exporter needs hostNetwork/hostPID.
-- After a node reset, delete the orphan NetBird peer at app.netbird.io, or the apiserver endpoint (`talos-1.netbird.cloud`) drifts to a suffixed name.
+- After a node reset, delete the orphan NetBird peer at app.netbird.io, or the apiserver endpoint (`talos-2.netbird.cloud`) drifts to a suffixed name.
 
 ## Tooling
 

@@ -3,7 +3,7 @@ talosVersion: 1.13.8
 kubernetesVersion: 1.36.1
 
 # NetBird peer DNS — resolves only on NetBird-connected clients.
-clusterEndpoint: https://talos-1.netbird.cloud:6443
+clusterEndpoint: https://talos-2.netbird.cloud:6443
 
 # Image Factory schematic (NetBird extension); topf derives the installer image.
 schematicId: "@schematic.yaml"
@@ -12,7 +12,11 @@ schematicId: "@schematic.yaml"
 secretsPath: secrets.sops.yaml
 
 nodes:
-  # topf connection target (literal IP): NetBird IP day-2; use public 148.251.156.11 for maintenance-mode reprovision.
-  - host: talos-1
-    ip: 100.76.19.49
+  # topf connection target (literal IP): NetBird IP day-2; use public 136.243.147.253 for maintenance-mode reprovision.
+  # data: NIC MAC and system-disk serial — NVMe/NIC enumeration differs per chassis and kernel.
+  - host: talos-2
+    ip: 100.76.218.222
     role: control-plane
+    data:
+      mac: "a8:a1:59:04:72:91"
+      systemDiskSerial: "89SS10RCT0RM"

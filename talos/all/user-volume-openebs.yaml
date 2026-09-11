@@ -5,8 +5,7 @@ name: openebs
 provisioning:
   diskSelector:
     match: "!system_disk && disk.transport == 'nvme'"
-  # nvme1n1 is 512 GB; cap below nominal to leave partition-table headroom.
   minSize: 100GB
-  maxSize: 500GB
+  maxSize: 1000GB
 filesystem:
   type: xfs
