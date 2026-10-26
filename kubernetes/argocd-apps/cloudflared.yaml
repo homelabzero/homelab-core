@@ -18,6 +18,13 @@ spec:
         valuesObject:
           replica:
             allNodes: true
+          image:
+            tag: 2026.10.3
+          updateStrategy:
+            type: RollingUpdate
+            rollingUpdate:
+              maxSurge: 1
+              maxUnavailable: 0
           tunnelConfig:
             name: "141790c7-b609-49c9-849f-dacc38b5197f"
             protocol: http2
